@@ -3,10 +3,9 @@ from abc import ABC, abstractmethod
 from collections import Callable
 
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, Iterator
 
 from .file import File
-from .attributes import AttributeManager
 from .common import H5ObjectLike
 from .dataset import Dataset
 
@@ -24,21 +23,17 @@ class Group(H5ObjectLike, ABC):
     """ Represents an HDF5-like group.
     """
     @abstractmethod
-    def create_group(self, name, track_order=None):
+    def create_group(self, name) -> Group:
         """ Create and return a new subgroup.
         Name may be absolute or relative.  Fails if the target name already
         exists.
-        track_order
-            Track dataset/group/attribute creation order under this group
-            if True. If None use global default h5.get_config().track_order.
         """
 
     @abstractmethod
-    def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds):
-        """ Create a new HDF5 dataset
+    def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds) -> Dataset:
+        """ Create a new HDF5-like dataset
         name
-            Name of the dataset (absolute or relative).  Provide None to make
-            an anonymous dataset.
+            Name of the dataset (absolute or relative).
         shape
             Dataset shape.  Use "()" for scalar datasets.  Required if "data"
             isn't provided.
@@ -55,45 +50,11 @@ class Group(H5ObjectLike, ABC):
         maxshape
             (Tuple) Make the dataset resizable up to this shape.  Use None for
             axes you want to be unlimited.
-        compression
-            (String or int) Compression strategy.  Legal values are 'gzip',
-            'szip', 'lzf'.  If an integer in range(10), this indicates gzip
-            compression level. Otherwise, an integer indicates the number of a
-            dynamically loaded compression filter.
-        compression_opts
-            Compression settings.  This is an integer for gzip, 2-tuple for
-            szip, etc. If specifying a dynamically loaded compression filter
-            number, this must be a tuple of values.
-        scaleoffset
-            (Integer) Enable scale/offset filter for (usually) lossy
-            compression of integer or floating-point data. For integer
-            data, the value of scaleoffset is the number of bits to
-            retain (pass 0 to let HDF5 determine the minimum number of
-            bits necessary for lossless compression). For floating point
-            data, scaleoffset is the number of digits after the decimal
-            place to retain; stored values thus have absolute error
-            less than 0.5*10**(-scaleoffset).
-        shuffle
-            (T/F) Enable shuffle filter.
-        fletcher32
-            (T/F) Enable fletcher32 error detection. Not permitted in
-            conjunction with the scale/offset filter.
         fillvalue
             (Scalar) Use this value for uninitialized parts of the dataset.
-        track_times
-            (T/F) Enable dataset creation timestamps.
-        track_order
-            (T/F) Track attribute creation order if True. If omitted use
-            global default h5.get_config().track_order.
-        external
-            (List of tuples) Sets the external storage property, thus
-            designating that the dataset will be stored in one or more
-            non-HDF5 file(s) external to the HDF5 file. Adds each listed
-            tuple of (file[, offset[, size]]) to the dataset's list of
-            external files.
         """
 
-    def require_dataset(self, name, shape, dtype, exact=False, **kwds):
+    def require_dataset(self, name, shape, dtype, exact=False, **kwds) -> Dataset:
         """ Open a dataset, creating it if it doesn't exist.
         If keyword "exact" is False (default), an existing dataset must have
         the same shape and a conversion-compatible dtype to be returned.  If
@@ -122,8 +83,7 @@ class Group(H5ObjectLike, ABC):
 
         return dset
 
-    @abstractmethod
-    def create_dataset_like(self, name, other, **kwupdate):
+    def create_dataset_like(self, name, other, **kwupdate) -> Dataset:
         """ Create a dataset similar to `other`.
         name
             Name of the dataset (absolute or relative).  Provide None to make
@@ -136,53 +96,34 @@ class Group(H5ObjectLike, ABC):
         shape and dtype, in which case the provided values take precedence over
         those from `other`.
         """
-        # for k in ('shape', 'dtype', 'chunks', 'compression',
-        #           'compression_opts', 'scaleoffset', 'shuffle', 'fletcher32',
-        #           'fillvalue'):
-        #     kwupdate.setdefault(k, getattr(other, k))
-        # # TODO: more elegant way to pass these (dcpl to create_dataset?)
-        # dcpl = other.id.get_create_plist()
-        # kwupdate.setdefault('track_times', dcpl.get_obj_track_times())
-        # kwupdate.setdefault('track_order', dcpl.get_attr_creation_order() > 0)
-        #
-        # # Special case: the maxshape property always exists, but if we pass it
-        # # to create_dataset, the new dataset will automatically get chunked
-        # # layout. So we copy it only if it is different from shape.
-        # if other.maxshape != other.shape:
-        #     kwupdate.setdefault('maxshape', other.maxshape)
-        #
-        # return self.create_dataset(name, **kwupdate)
+        for k in ('shape', 'dtype', 'chunks', 'fillvalue'):
+            kwupdate.setdefault(k, getattr(other, k))
 
-    @abstractmethod
-    def require_group(self, name):
-        # TODO: support kwargs like require_dataset
+        # Special case: the maxshape property always exists, but if we pass it
+        # to create_dataset, the new dataset will automatically get chunked
+        # layout. So we copy it only if it is different from shape.
+        if other.maxshape != other.shape:
+            kwupdate.setdefault('maxshape', other.maxshape)
+
+        return self.create_dataset(name, **kwupdate)
+
+    def require_group(self, name) -> Group:
         """Return a group, creating it if it doesn't exist.
         TypeError is raised if something with that name already exists that
         isn't a group.
         """
+        if not name in self:
+            return self.create_group(name)
+
+        group = self[name]
+        if not isinstance(group, Group):
+            raise TypeError(f"Incompatible object ({type(group)}) already exists")
+
+        return group
 
     @abstractmethod
-    def __getitem__(self, name):
+    def __getitem__(self, name) -> H5ObjectLike:
         """ Open an object in the file """
-
-    @abstractmethod
-    def get(self, name, default=None, getclass=False, getlink=False):
-        """ Retrieve an item or other information.
-        "name" given only:
-            Return the item, or "default" if it doesn't exist
-        "getclass" is True:
-            Return the class of object (Group, Dataset, etc.), or "default"
-            if nothing with that name exists
-        "getlink" is True:
-            Return HardLink, SoftLink or ExternalLink instances.  Return
-            "default" if nothing with that name exists.
-        "getlink" and "getclass" are True:
-            Return HardLink, SoftLink and ExternalLink classes.  Return
-            "default" if nothing with that name exists.
-        Example:
-        >>> cls = group.get('foo', getclass=True)
-        >>> if cls == SoftLink:
-        """
 
     @abstractmethod
     def __setitem__(self, name, obj):
@@ -203,22 +144,6 @@ class Group(H5ObjectLike, ABC):
             values are stored as scalar datasets. Raise ValueError if we
             can't understand the resulting array dtype.
         """
-
-    @abstractmethod
-    def __delitem__(self, name):
-        """ Delete (unlink) an item from this group. """
-
-    @abstractmethod
-    def __len__(self):
-        """ Number of members attached to this group """
-
-    @abstractmethod
-    def __iter__(self):
-        """ Iterate over member names """
-
-    @abstractmethod
-    def __contains__(self, name):
-        """ Test if a member name exists """
 
     @abstractmethod
     def copy(self, source, dest, name=None,
@@ -248,13 +173,14 @@ class Group(H5ObjectLike, ABC):
         ['MyGroup', 'MyCopy']
         """
 
-    @abstractmethod
     def move(self, source, dest):
         """ Move a link to a new location in the file.
         If "source" is a hard link, this effectively renames the object.  If
         "source" is a soft or external link, the link itself is moved, with its
         value unmodified.
         """
+        self.copy(source, dest)
+        del self[source]
 
     def visit(self, func: Callable[[str], Optional[Any]]) -> Optional[Any]:
         """ Recursively visit all names in this group and subgroups (HDF5 1.8).

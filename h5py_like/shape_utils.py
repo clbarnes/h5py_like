@@ -16,6 +16,16 @@ class NullSlicingException(ValueError):
 
 
 def slice_to_begin_len_stride(slice_: slice, max_len: int) -> Tuple[int, int, int]:
+    """
+    Convert a slice object, possibly with None or negative members, into positive integers for start, length, and stride.
+
+    Raises NullSlicingException if there would be no results returned from this indexing.
+
+    :param slice_:
+    :param max_len: maximum length of the dimension
+    :return: tuple of positive integer start, length, stride
+    :raises: NullSlicingException
+    """
     """For a single dimension with a given size, turn a slice object into a (start_idx, length)
      pair. Returns (None, 0) if slice is invalid."""
     stride = 1 if slice_.step is None else slice_.step
@@ -46,6 +56,16 @@ def slice_to_begin_len_stride(slice_: slice, max_len: int) -> Tuple[int, int, in
 
 
 def int_to_begin_len_stride(i: int, max_len: int) -> Tuple[int, int, int]:
+    """
+    Convert an integer index, possibly negative, into positive integers for start, length, and stride.
+
+    Raises NullSlicingException if there would be no results returned from this indexing
+
+    :param i: integer index
+    :param max_len: maximum length of the dimension
+    :return: tuple of positive integer start, length, stride
+    :raises: NullSlicingException
+    """
     """For a single dimension with a given size, turn an int into a (start_idx, length)
     pair."""
     if -max_len < i < 0:
@@ -59,6 +79,14 @@ def int_to_begin_len_stride(i: int, max_len: int) -> Tuple[int, int, int]:
 
 
 def sliding_window(iterable: Iterable, wsize: int) -> Iterator[Tuple[Any, ...]]:
+    """
+    Move a sliding window over the iterable.
+    If the window is longer than the iterable, yields 0 results.
+
+    :param iterable:
+    :param wsize: length of the sliding window
+    :return: iterator of wsize-length tuples
+    """
     """Yield a wsize-length tuple of items from iterable arr as a sliding window"""
     q = deque(islice(iterable, wsize), wsize)
     if len(q) != wsize:
@@ -119,6 +147,15 @@ SliceArgs = TypeVar("SliceArgs", SliceLike, Tuple[SliceLike])
 
 
 def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...]]:
+    """
+    Given arguments as usually passed to __getitem__,
+    convert them into tuples of positive integers describing the
+    offset, shape (total, as if unstrided), and striding of the query.
+
+    :param args: arguments as passed to __getitem__
+    :param max_shape: maximum shape of the array-like dataset
+    :return: start, shape, and strides over each dimension
+    """
     type_msg = 'Advanced selection inappropriate. ' \
                'Only numbers, slices (`:`), and ellipsis (`...`) are valid indices (or tuples thereof); got {}'
     ndim = len(max_shape)
@@ -160,6 +197,15 @@ def getitem(
     args: SliceArgs, max_shape: Tuple[int, ...], dtype: np.dtype,
     read_fn: Callable[[Tuple[int, ...], Tuple[int, ...]], np.ndarray]
 ) -> np.ndarray:
+    """
+    Use a given function to get data from an underlying dataset, and stride it with numpy if necessary.
+
+    :param args: arguments as passed to __getitem__
+    :param max_shape: maximum shape of the array-like dataset
+    :param dtype: data type of the data (default whatever is returned by the internal function)
+    :param read_fn: callable which takes offset and shape tuples of positive integers, and returns a numpy array
+    :return: numpy array of the returned data with the requested dtype
+    """
     try:
         begin, shape, stride = sanitize_indices(args, max_shape)
     except NullSlicingException:
@@ -177,6 +223,16 @@ def setitem(
     args: SliceArgs, array: np.ndarray, max_shape: Tuple[int, ...],
     dtype, write_fn: Callable[[Tuple[int, ...], np.ndarray], np.ndarray]
 ):
+    """
+    Use a given function to insert data into an underlying dataset.
+    Does not support striding or broadcasting.
+
+    :param args: index arguments as passed to __setitem__
+    :param array: array-like data to write
+    :param max_shape: shape of the target dataset
+    :param dtype: data type to write
+    :param write_fn: function which takes an offset as a tuple of integers, and a numpy array, and writes to an underlying dataset
+    """
     begin, shape, stride = sanitize_indices(args, max_shape)
     if set(stride) != {1}:
         raise NotImplementedError("Strided writes are not supported")
@@ -206,9 +262,21 @@ def setitem(
 
 
 def threaded_block_read(
-    start: Tuple[int, ...], shape: Tuple[int, ...], chunks: Tuple[int, ...],
+    start: Tuple[int, ...], shape: Tuple[int, ...], stride: Tuple[int, ...], chunks: Tuple[int, ...],
     read_fn: Callable[[Tuple[int, ...]], np.ndarray], threads=DEFAULT_THREADS
-):
+) -> np.ndarray:
+    """
+    For a blocked dataset, read complete blocks using python threads and then stitch and stride it in numpy.
+
+    :param start: offset from 0 corner
+    :param shape: unstrided shape of block to be read
+    :param stride: strides
+    :param chunks: block shape inside the dataset
+    :param read_fn: function which takes a block index as a tuple of ints and returns a numpy array
+    :param threads: number of threads to use
+    :return: numpy array
+    """
+    # todo: check for off-by-one
     start = np.asarray(start, dtype=int)
     shape = np.asarray(shape, dtype=int)
     chunks = np.asarray(chunks, dtype=int)
@@ -237,5 +305,5 @@ def threaded_block_read(
             idx = futures[fut]
             blocks[idx] = fut.result()
 
-    big_arr = np.block(blocks)
-    return big_arr[tuple(slice(s1, s2) for s1, s2 in zip(start_internal_offset, stop_internal_offset))]
+    big_arr = np.block(blocks.tolist())
+    return big_arr[tuple(slice(*sss) for sss in zip(start_internal_offset, stop_internal_offset, stride))]
