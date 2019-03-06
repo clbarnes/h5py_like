@@ -1,6 +1,6 @@
 # h5py_like
 
-Some base classes and helper functions for an approximately h5py-like API.
+Some base classes and helper functions for an approximately h5py-like API in python 3.7+.
 
 ## Use case
 
