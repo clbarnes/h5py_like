@@ -66,12 +66,10 @@ def int_to_begin_len_stride(i: int, max_len: int) -> Tuple[int, int, int]:
     :return: tuple of positive integer start, length, stride
     :raises: NullSlicingException
     """
-    """For a single dimension with a given size, turn an int into a (start_idx, length)
-    pair."""
     if -max_len < i < 0:
         begin = i + max_len
     elif i >= max_len or i < -max_len:
-        raise NullSlicingException('Index ({}) out of range (0-{})'.format(i, max_len - 1))
+        raise IndexError('Index ({}) out of range (0-{})'.format(i, max_len - 1))
     else:
         begin = i
 
@@ -213,8 +211,12 @@ def getitem(
         return np.empty((0,)*len(max_shape), dtype=dtype)
 
     arr = np.asarray(read_fn(begin, shape), dtype=dtype)
+    if isinstance(args, tuple) and len(args) == len(max_shape) and all(isinstance(i, int) for i in args):
+        return arr.item()
+
     if set(stride) == {1}:
         return arr
+
     stride_slices = tuple(slice(None, None, s) for s in stride)
     return arr[stride_slices]
 

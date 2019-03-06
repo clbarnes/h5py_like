@@ -17,13 +17,13 @@ e.g. [zarr](https://github.com/zarr-developers/zarr),
 - Empty and scalar data spaces
 - Logical indexing
 - Broadcasting
-- Reading a scalar from an array (reads a size-1 array; use `np.ndarray.item()` from there)
 - Dimension scales
 - Reading arrays as type
 
 ## Differences from h5py
 
 - Internally, access modes are converted to enums
+- Singleton dimensions are not squeezed out of returned arrays
 
 ## Notes
 
