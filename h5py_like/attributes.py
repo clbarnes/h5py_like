@@ -3,10 +3,10 @@ from collections import MutableMapping
 
 import numpy as np
 
-from h5py_like.common import Mode, ReadOnlyException
+from h5py_like.common import Mode, ReadOnlyException, WriteModeMixin
 
 
-class AttributeManager(MutableMapping, ABC):
+class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
     """
     Allows dictionary-style access to an HDF5-like object's attributes.
     These are created exclusively by the library and are available as
@@ -21,12 +21,8 @@ class AttributeManager(MutableMapping, ABC):
     method modify().  To specify an attribute of a particular (numpy) type and
     shape, use create().
     """
-    def __init__(self, mode):
-        self.mode = mode
-
-    def raise_on_mutate(self):
-        if self.mode == Mode.READ_ONLY:
-            raise ReadOnlyException("Cannot change the attributes of a read-only object")
+    def __init__(self, mode: Mode = Mode.default()):
+        self._mode = Mode.from_str(mode)
 
     def create(self, name, data, shape=None, dtype=None):
         """ Set a new attribute, overwriting any existing attribute.
@@ -34,6 +30,7 @@ class AttributeManager(MutableMapping, ABC):
         use a specific (numpy) type or shape, or to preserve the type of an attribute,
         use the methods create() and modify().
         """
+        self.raise_on_readonly()
         if dtype is None:
             dtype = getattr(data, 'dtype', None)
         else:
@@ -53,6 +50,7 @@ class AttributeManager(MutableMapping, ABC):
         externally generated files.
         If the attribute doesn't exist, it will be automatically created.
         """
+        self.raise_on_readonly()
         existing = self.get(name)
         if not existing:
             self.create(name, value)

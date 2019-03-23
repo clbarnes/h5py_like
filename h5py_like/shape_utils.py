@@ -26,8 +26,9 @@ def slice_to_begin_len_stride(slice_: slice, max_len: int) -> Tuple[int, int, in
     :return: tuple of positive integer start, length, stride
     :raises: NullSlicingException
     """
-    """For a single dimension with a given size, turn a slice object into a (start_idx, length)
-     pair. Returns (None, 0) if slice is invalid."""
+    if slice_.step == 0:
+        raise ValueError("slice step cannot be zero")
+
     stride = 1 if slice_.step is None else slice_.step
 
     if slice_.start is None:
@@ -150,9 +151,11 @@ def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple
     convert them into tuples of positive integers describing the
     offset, shape (total, as if unstrided), and striding of the query.
 
+    If a slice in one dimension would have a length of 0, that entry in the start and stride tuples will be None.
+
     :param args: arguments as passed to __getitem__
     :param max_shape: maximum shape of the array-like dataset
-    :return: start, shape, and strides over each dimension
+    :return: start tuple, shape tuple, stride tuple
     """
     type_msg = 'Advanced selection inappropriate. ' \
                'Only numbers, slices (`:`), and ellipsis (`...`) are valid indices (or tuples thereof); got {}'
@@ -174,16 +177,23 @@ def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple
     found_ellipsis = False
     for item in index_lst:
         d = len(begin_len_stride)
+
         if isinstance(item, slice):
-            begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
+            try:
+                begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
+            except NullSlicingException:
+                begin_len_stride.append((None, 0, None))
+
         elif isinstance(item, numbers.Number):
             begin_len_stride.append(int_to_begin_len_stride(int(item), max_shape[d]))
+
         elif isinstance(item, type(Ellipsis)):
             if found_ellipsis:
                 raise ValueError("Only one ellipsis may be used")
             found_ellipsis = True
             while len(begin_len_stride) + (len(index_lst) - d - 1) < ndim:
                 begin_len_stride.append((0, max_shape[len(begin_len_stride)], 1))
+
         else:
             raise TypeError(type_msg.format(type(item)))
 
@@ -204,11 +214,9 @@ def getitem(
     :param read_fn: callable which takes offset and shape tuples of positive integers, and returns a numpy array
     :return: numpy array of the returned data with the requested dtype
     """
-    try:
-        begin, shape, stride = sanitize_indices(args, max_shape)
-    except NullSlicingException:
-        # todo: could be mixture of 0 and non-zero lengths
-        return np.empty((0,)*len(max_shape), dtype=dtype)
+    begin, shape, stride = sanitize_indices(args, max_shape)
+    if 0 in shape:
+        return np.empty(shape, dtype=dtype)
 
     arr = np.asarray(read_fn(begin, shape), dtype=dtype)
     if isinstance(args, tuple) and len(args) == len(max_shape) and all(isinstance(i, int) for i in args):
@@ -222,12 +230,12 @@ def getitem(
 
 
 def setitem(
-    args: SliceArgs, array: np.ndarray, max_shape: Tuple[int, ...],
+    args: SliceArgs, array: Union[np.ndarray, np.generic], max_shape: Tuple[int, ...],
     dtype, write_fn: Callable[[Tuple[int, ...], np.ndarray], np.ndarray]
 ):
     """
     Use a given function to insert data into an underlying dataset.
-    Does not support striding or broadcasting.
+    Does not support striding or broadcasting other than scalar.
 
     :param args: index arguments as passed to __setitem__
     :param array: array-like data to write
@@ -241,8 +249,9 @@ def setitem(
 
     if 0 in shape:
         return
-    if shape != array.shape:
-        raise ValueError("Extents of requested write go beyond array bounds")
+
+    if np.isscalar(array):
+        array = np.full(shape, array, dtype, order='C')
 
     try:
         item_arr = np.asarray(array, dtype, order='C')
@@ -259,6 +268,8 @@ def setitem(
             raise
 
     # item_arr = rectify_shape(item_arr, shape)
+    if shape != array.shape:
+        raise ValueError("Extents of requested write go beyond array bounds")
 
     return write_fn(begin, item_arr)
 

@@ -3,15 +3,14 @@ from abc import ABC, abstractmethod
 from collections import Callable
 
 import numpy as np
-from typing import Any, Optional, Iterator
+from typing import Any, Optional
 
-from .file import File
 from .common import H5ObjectLike
-from .dataset import Dataset
+from .dataset import DatasetBase
 
 
 def recurse_items(group_or_dataset: H5ObjectLike):
-    if isinstance(group_or_dataset, Dataset):
+    if isinstance(group_or_dataset, DatasetBase):
         yield group_or_dataset
     else:
         for key, value in group_or_dataset.items():
@@ -19,18 +18,18 @@ def recurse_items(group_or_dataset: H5ObjectLike):
             yield from recurse_items(value)
 
 
-class Group(H5ObjectLike, ABC):
+class GroupBase(H5ObjectLike, ABC):
     """ Represents an HDF5-like group.
     """
     @abstractmethod
-    def create_group(self, name) -> Group:
+    def create_group(self, name) -> GroupBase:
         """ Create and return a new subgroup.
         Name may be absolute or relative.  Fails if the target name already
         exists.
         """
 
     @abstractmethod
-    def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds) -> Dataset:
+    def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds) -> DatasetBase:
         """ Create a new HDF5-like dataset
         name
             Name of the dataset (absolute or relative).
@@ -54,7 +53,7 @@ class Group(H5ObjectLike, ABC):
             (Scalar) Use this value for uninitialized parts of the dataset.
         """
 
-    def require_dataset(self, name, shape, dtype, exact=False, **kwds) -> Dataset:
+    def require_dataset(self, name, shape, dtype, exact=False, **kwds) -> DatasetBase:
         """ Open a dataset, creating it if it doesn't exist.
         If keyword "exact" is False (default), an existing dataset must have
         the same shape and a conversion-compatible dtype to be returned.  If
@@ -68,7 +67,7 @@ class Group(H5ObjectLike, ABC):
             return self.create_dataset(name, *(shape, dtype), **kwds)
 
         dset = self[name]
-        if not isinstance(dset, Dataset):
+        if not isinstance(dset, DatasetBase):
             raise TypeError("Incompatible object (%s) already exists" % dset.__class__.__name__)
 
         if not shape == dset.shape:
@@ -83,7 +82,7 @@ class Group(H5ObjectLike, ABC):
 
         return dset
 
-    def create_dataset_like(self, name, other, **kwupdate) -> Dataset:
+    def create_dataset_like(self, name, other, **kwupdate) -> DatasetBase:
         """ Create a dataset similar to `other`.
         name
             Name of the dataset (absolute or relative).  Provide None to make
@@ -107,7 +106,7 @@ class Group(H5ObjectLike, ABC):
 
         return self.create_dataset(name, **kwupdate)
 
-    def require_group(self, name) -> Group:
+    def require_group(self, name) -> GroupBase:
         """Return a group, creating it if it doesn't exist.
         TypeError is raised if something with that name already exists that
         isn't a group.
@@ -116,7 +115,7 @@ class Group(H5ObjectLike, ABC):
             return self.create_group(name)
 
         group = self[name]
-        if not isinstance(group, Group):
+        if not isinstance(group, GroupBase):
             raise TypeError(f"Incompatible object ({type(group)}) already exists")
 
         return group
@@ -215,7 +214,7 @@ class Group(H5ObjectLike, ABC):
         # Get a list of all datasets in the file
         >>> mylist = []
         >>> def func(name, obj):
-        ...     if isinstance(obj, Dataset):
+        ...     if isinstance(obj, DatasetBase):
         ...         mylist.append(name)
         ...
         >>> f = File('foo.hdf5')

@@ -1,19 +1,17 @@
-import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 from .common import Mode
-from .group import Group
 
 
-class File(Group, ABC):
+class FileMixin(ABC):
     @abstractmethod
     def __init__(self, name, mode=Mode.READ_WRITE_CREATE):
         self.filename: Path = Path(name).absolute()
         self.mode: Mode = Mode.from_str(mode)
 
     @property
-    def parent(self):
+    def parent(self) -> None:
         return None
 
     def __enter__(self):

@@ -1,26 +1,32 @@
 import sys
 from abc import abstractmethod, ABC
+from contextlib import contextmanager
 
 import numpy as np
 from typing import Tuple, Optional, Any, Union, Iterator
 
 from h5py_like.shape_utils import getitem, setitem
-from .common import H5ObjectLike, ReadOnlyException
+from .common import H5ObjectLike, ReadOnlyException, Mode
 
 
-class Dataset(H5ObjectLike, ABC):
+class DatasetBase(H5ObjectLike, ABC):
     """
         Represents an HDF5-like dataset
     """
+    def __init__(self, mode: Mode = Mode.default()):
+        self._astype = None
+        super().__init__(mode)
 
-    @abstractmethod
+    @contextmanager
     def astype(self, dtype):
         """ Get a context manager allowing you to perform reads to a
         different destination type, e.g.:
         >>> with dataset.astype('f8'):
         ...     double_precision = dataset[0:100:2]
         """
-        raise NotImplementedError()
+        self._astype = np.dtype(dtype)
+        yield
+        self._astype = None
 
     @property
     @abstractmethod
@@ -46,7 +52,7 @@ class Dataset(H5ObjectLike, ABC):
     @property
     def size(self) -> int:
         """Numpy-style attribute giving the total dataset size"""
-        return np.prod(self.shape, dtype=np.intp)
+        return np.prod(self.shape, dtype=np.intp).item()
 
     @property
     @abstractmethod
@@ -100,6 +106,8 @@ class Dataset(H5ObjectLike, ABC):
         The data is not "reshuffled" to fit in the new shape; each axis is
         grown or shrunk independently.  The coordinates of existing data are
         fixed.
+
+        self._sanitize_resize may help validate the resize operation.
         """
         # checked_size = self._sanitize_resize(size, axis)
         raise NotImplementedError()
@@ -131,33 +139,21 @@ class Dataset(H5ObjectLike, ABC):
             yield self[i]
 
     @abstractmethod
-    def _read_array(self, start, shape) -> np.ndarray:
-        """Internal method which reads a contiguous array of shape ``shape`` from offset ``start``"""
-        pass
-
     def __getitem__(self, args) -> np.ndarray:
         """Read a slice from the HDF5-like dataset.
-        Supports slices, integers, negative indexing, and striding.
-        Strided queries read "stepped-over" data and then stride it in a second pass.
-        Does not support logical indexing.
+
+        See h5py_like.shape_utils.getitem for a utility function which supports positive and negative
+        integers/slices, striding, ellipses (explicit and implicit), reading scalars,
+        and reading arrays with 0-length dimensions.
+
+        Don't forget to use ``self._astype or self.dtype`` when setting the read dtype,
+        to be compatible with the ``Dataset.astype`` context manager.
         """
-        return getitem(args, self.shape, self.dtype, self._read_array)
 
     @abstractmethod
-    def _write_array(self, start: Tuple[int, ...], arr: np.ndarray):
-        """Internal method which writes a contiguous array at offset ``start``"""
-        pass
-
     def __setitem__(self, args, val):
         """ Write to the HDF5-like dataset from a Numpy array.
-        NumPy's broadcasting rules are honored, for "simple" indexing
-        (slices and integers).  For advanced indexing, the shapes must
-        match.
         """
-        if self.file.mode.READ_ONLY:
-            raise ReadOnlyException("Cannot change the attributes of a read-only object")
-
-        setitem(args, val, self.shape, self.dtype, self._write_array)
 
     @abstractmethod
     def read_direct(self, dest, source_sel=None, dest_sel=None):
