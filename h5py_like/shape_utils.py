@@ -42,7 +42,7 @@ def slice_to_begin_len_stride(slice_: slice, max_len: int) -> Tuple[int, int, in
     if slice_.stop is None or slice_.stop > max_len:
         stop = max_len
     elif slice_.stop < 0:
-        stop = (max_len + slice_.stop)
+        stop = max_len + slice_.stop
     else:
         stop = slice_.stop
 
@@ -69,7 +69,7 @@ def int_to_begin_len_stride(i: int, max_len: int) -> Tuple[int, int, int]:
     if -max_len < i < 0:
         begin = i + max_len
     elif i >= max_len or i < -max_len:
-        raise IndexError('Index ({}) out of range (0-{})'.format(i, max_len - 1))
+        raise IndexError("Index ({}) out of range (0-{})".format(i, max_len - 1))
     else:
         begin = i
 
@@ -114,8 +114,10 @@ def rectify_shape(arr: np.ndarray, required_shape: Tuple[int, ...]) -> np.ndarra
 
     important_shape = tuple(important_shape)
 
-    msg = ('could not broadcast input array from shape {} into shape {}; '
-           'complicated broadcasting not supported').format(arr.shape, required_shape)
+    msg = (
+        "could not broadcast input array from shape {} into shape {}; "
+        "complicated broadcasting not supported"
+    ).format(arr.shape, required_shape)
 
     if len(important_shape) > len(required_shape):
         raise ValueError(msg)
@@ -144,7 +146,11 @@ SliceLike = Union[ellipsis, slice, int]
 SliceArgs = TypeVar("SliceArgs", SliceLike, Tuple[SliceLike])
 
 
-def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], Optional[Tuple[int, ...]]]:
+def sanitize_indices(
+    args: SliceArgs, max_shape: Tuple[int, ...]
+) -> Tuple[
+    Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], Optional[Tuple[int, ...]]
+]:
     """
     Given arguments as usually passed to __getitem__,
     convert them into tuples of positive integers describing the
@@ -155,8 +161,10 @@ def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple
     :param max_shape: maximum shape of the array-like dataset
     :return: start, shape, and strides over each dimension, and a tuple of which dimensions should be squeezed (None if none of them)
     """
-    type_msg = 'Advanced selection inappropriate. ' \
-               'Only numbers, slices (`:`), and ellipsis (`...`) are valid indices (or tuples thereof); got {}'
+    type_msg = (
+        "Advanced selection inappropriate. "
+        "Only numbers, slices (`:`), and ellipsis (`...`) are valid indices (or tuples thereof); got {}"
+    )
     ndim = len(max_shape)
 
     if isinstance(args, tuple):
@@ -198,8 +206,10 @@ def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple
 
 
 def getitem(
-    args: SliceArgs, max_shape: Tuple[int, ...], dtype: np.dtype,
-    read_fn: Callable[[Tuple[int, ...], Tuple[int, ...]], np.ndarray]
+    args: SliceArgs,
+    max_shape: Tuple[int, ...],
+    dtype: np.dtype,
+    read_fn: Callable[[Tuple[int, ...], Tuple[int, ...]], np.ndarray],
 ) -> np.ndarray:
     """
     Use a given function to get data from an underlying dataset, and stride it with numpy if necessary.
@@ -214,10 +224,14 @@ def getitem(
         begin, shape, stride, squeeze = sanitize_indices(args, max_shape)
     except NullSlicingException:
         # todo: could be mixture of 0 and non-zero lengths
-        return np.empty((0,)*len(max_shape), dtype=dtype)
+        return np.empty((0,) * len(max_shape), dtype=dtype)
 
     arr = np.asarray(read_fn(begin, shape), dtype=dtype)
-    if isinstance(args, tuple) and len(args) == len(max_shape) and all(isinstance(i, int) for i in args):
+    if (
+        isinstance(args, tuple)
+        and len(args) == len(max_shape)
+        and all(isinstance(i, int) for i in args)
+    ):
         return arr.item()
 
     if set(stride) == {1}:
@@ -228,8 +242,11 @@ def getitem(
 
 
 def setitem(
-    args: SliceArgs, array: np.ndarray, max_shape: Tuple[int, ...],
-    dtype, write_fn: Callable[[Tuple[int, ...], np.ndarray], np.ndarray]
+    args: SliceArgs,
+    array: np.ndarray,
+    max_shape: Tuple[int, ...],
+    dtype,
+    write_fn: Callable[[Tuple[int, ...], np.ndarray], np.ndarray],
 ):
     """
     Use a given function to insert data into an underlying dataset.
@@ -251,16 +268,18 @@ def setitem(
         raise ValueError("Extents of requested write go beyond array bounds")
 
     try:
-        item_arr = np.asarray(array, dtype, order='C')
+        item_arr = np.asarray(array, dtype, order="C")
     except ValueError as e:
-        if any(s in str(e) for s in ('invalid literal for ', 'could not convert')):
+        if any(s in str(e) for s in ("invalid literal for ", "could not convert")):
             bad_dtype = np.asarray(array).dtype
             raise TypeError("No conversion path for dtype: " + repr(bad_dtype))
         else:
             raise
     except TypeError as e:
-        if 'argument must be' in str(e):
-            raise OSError("Can't prepare for writing data (no appropriate function for conversion path)")
+        if "argument must be" in str(e):
+            raise OSError(
+                "Can't prepare for writing data (no appropriate function for conversion path)"
+            )
         else:
             raise
 
@@ -270,8 +289,12 @@ def setitem(
 
 
 def threaded_block_read(
-    start: Tuple[int, ...], shape: Tuple[int, ...], stride: Tuple[int, ...], chunks: Tuple[int, ...],
-    read_fn: Callable[[Tuple[int, ...]], np.ndarray], threads=DEFAULT_THREADS
+    start: Tuple[int, ...],
+    shape: Tuple[int, ...],
+    stride: Tuple[int, ...],
+    chunks: Tuple[int, ...],
+    read_fn: Callable[[Tuple[int, ...]], np.ndarray],
+    threads=DEFAULT_THREADS,
 ) -> np.ndarray:
     """
     For a blocked dataset, read complete blocks using python threads and then stitch and stride it in numpy.
@@ -299,7 +322,7 @@ def threaded_block_read(
         stop_block_idx += 1
         stop_internal_offset -= chunks
 
-    block_blocks_shape: np.ndarray = stop_block_idx-start_block_idx
+    block_blocks_shape: np.ndarray = stop_block_idx - start_block_idx
 
     blocks = np.empty(shape=block_blocks_shape, dtype=object)
 
@@ -314,4 +337,9 @@ def threaded_block_read(
             blocks[idx] = fut.result()
 
     big_arr = np.block(blocks.tolist())
-    return big_arr[tuple(slice(*sss) for sss in zip(start_internal_offset, stop_internal_offset, stride))]
+    return big_arr[
+        tuple(
+            slice(*sss)
+            for sss in zip(start_internal_offset, stop_internal_offset, stride)
+        )
+    ]

@@ -40,11 +40,11 @@ class H5ObjectLike(MutableMapping, ABC):
 
 
 class Mode(StrEnum):
-    READ_ONLY = 'r'
-    READ_WRITE = 'r+'
-    CREATE_TRUNCATE = 'w'
-    CREATE = 'x'
-    READ_WRITE_CREATE = 'a'
+    READ_ONLY = "r"
+    READ_WRITE = "r+"
+    CREATE_TRUNCATE = "w"
+    CREATE = "x"
+    READ_WRITE_CREATE = "a"
 
     @property
     def writable(self):
@@ -52,6 +52,6 @@ class Mode(StrEnum):
 
     @classmethod
     def from_str(cls, s):
-        if s == 'w-':
-            s = 'x'
+        if s == "w-":
+            s = "x"
         return cls(s)

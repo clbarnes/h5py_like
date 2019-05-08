@@ -22,6 +22,7 @@ def recurse_items(group_or_dataset: H5ObjectLike):
 class Group(H5ObjectLike, ABC):
     """ Represents an HDF5-like group.
     """
+
     @abstractmethod
     def create_group(self, name) -> Group:
         """ Create and return a new subgroup.
@@ -30,7 +31,9 @@ class Group(H5ObjectLike, ABC):
         """
 
     @abstractmethod
-    def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds) -> Dataset:
+    def create_dataset(
+        self, name, shape=None, dtype=None, data=None, **kwds
+    ) -> Dataset:
         """ Create a new HDF5-like dataset
         name
             Name of the dataset (absolute or relative).
@@ -69,17 +72,26 @@ class Group(H5ObjectLike, ABC):
 
         dset = self[name]
         if not isinstance(dset, Dataset):
-            raise TypeError("Incompatible object (%s) already exists" % dset.__class__.__name__)
+            raise TypeError(
+                "Incompatible object (%s) already exists" % dset.__class__.__name__
+            )
 
         if not shape == dset.shape:
-            raise TypeError("Shapes do not match (existing %s vs new %s)" % (dset.shape, shape))
+            raise TypeError(
+                "Shapes do not match (existing %s vs new %s)" % (dset.shape, shape)
+            )
 
         if exact:
             if not dtype == dset.dtype:
                 raise TypeError(
-                    "Datatypes do not exactly match (existing %s vs new %s)" % (dset.dtype, dtype))
+                    "Datatypes do not exactly match (existing %s vs new %s)"
+                    % (dset.dtype, dtype)
+                )
         elif not np.can_cast(dtype, dset.dtype):
-            raise TypeError("Datatypes cannot be safely cast (existing %s vs new %s)" % (dset.dtype, dtype))
+            raise TypeError(
+                "Datatypes cannot be safely cast (existing %s vs new %s)"
+                % (dset.dtype, dtype)
+            )
 
         return dset
 
@@ -96,14 +108,14 @@ class Group(H5ObjectLike, ABC):
         shape and dtype, in which case the provided values take precedence over
         those from `other`.
         """
-        for k in ('shape', 'dtype', 'chunks', 'fillvalue'):
+        for k in ("shape", "dtype", "chunks", "fillvalue"):
             kwupdate.setdefault(k, getattr(other, k))
 
         # Special case: the maxshape property always exists, but if we pass it
         # to create_dataset, the new dataset will automatically get chunked
         # layout. So we copy it only if it is different from shape.
         if other.maxshape != other.shape:
-            kwupdate.setdefault('maxshape', other.maxshape)
+            kwupdate.setdefault("maxshape", other.maxshape)
 
         return self.create_dataset(name, **kwupdate)
 
@@ -146,9 +158,17 @@ class Group(H5ObjectLike, ABC):
         """
 
     @abstractmethod
-    def copy(self, source, dest, name=None,
-             shallow=False, expand_soft=False, expand_external=False,
-             expand_refs=False, without_attrs=False):
+    def copy(
+        self,
+        source,
+        dest,
+        name=None,
+        shallow=False,
+        expand_soft=False,
+        expand_external=False,
+        expand_refs=False,
+        without_attrs=False,
+    ):
         """Copy an object or group.
         The source can be a path, Group, Dataset, or Datatype object.  The
         destination can be either a path or a Group object.  The source and
@@ -202,7 +222,9 @@ class Group(H5ObjectLike, ABC):
             if result is not None:
                 return result
 
-    def visititems(self, func: Callable[[str, H5ObjectLike], Optional[Any]]) -> Optional[Any]:
+    def visititems(
+        self, func: Callable[[str, H5ObjectLike], Optional[Any]]
+    ) -> Optional[Any]:
         """ Recursively visit names and objects in this group (HDF5 1.8).
         You supply a callable (function, method or callable object); it
         will be called exactly once for each link in this group and every

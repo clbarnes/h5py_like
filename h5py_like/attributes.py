@@ -21,12 +21,15 @@ class AttributeManager(MutableMapping, ABC):
     method modify().  To specify an attribute of a particular (numpy) type and
     shape, use create().
     """
+
     def __init__(self, mode):
         self.mode = mode
 
     def raise_on_mutate(self):
         if self.mode == Mode.READ_ONLY:
-            raise ReadOnlyException("Cannot change the attributes of a read-only object")
+            raise ReadOnlyException(
+                "Cannot change the attributes of a read-only object"
+            )
 
     def create(self, name, data, shape=None, dtype=None):
         """ Set a new attribute, overwriting any existing attribute.
@@ -35,7 +38,7 @@ class AttributeManager(MutableMapping, ABC):
         use the methods create() and modify().
         """
         if dtype is None:
-            dtype = getattr(data, 'dtype', None)
+            dtype = getattr(data, "dtype", None)
         else:
             dtype = np.dtype(dtype)
 

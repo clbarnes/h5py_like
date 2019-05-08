@@ -73,7 +73,9 @@ class Dataset(H5ObjectLike, ABC):
         """Dataset chunks (or None)"""
         raise NotImplementedError()
 
-    def _sanitize_resize(self, size: Union[int, Tuple[int, ...]], axis: Optional[int] = None) -> Tuple[int, ...]:
+    def _sanitize_resize(
+        self, size: Union[int, Tuple[int, ...]], axis: Optional[int] = None
+    ) -> Tuple[int, ...]:
         if self.chunks is None:
             raise TypeError("Only chunked datasets can be resized")
 
@@ -110,7 +112,9 @@ class Dataset(H5ObjectLike, ABC):
         """
         size = self.len()
         if size > sys.maxsize:
-            raise OverflowError("Value too big for Python's __len__; use Dataset.len() instead.")
+            raise OverflowError(
+                "Value too big for Python's __len__; use Dataset.len() instead."
+            )
         return size
 
     def len(self) -> int:
@@ -155,7 +159,9 @@ class Dataset(H5ObjectLike, ABC):
         match.
         """
         if self.file.mode.READ_ONLY:
-            raise ReadOnlyException("Cannot change the attributes of a read-only object")
+            raise ReadOnlyException(
+                "Cannot change the attributes of a read-only object"
+            )
 
         setitem(args, val, self.shape, self.dtype, self._write_array)
 
