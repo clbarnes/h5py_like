@@ -12,7 +12,9 @@ from .common import DEFAULT_THREADS
 
 
 class NullSlicingException(ValueError):
-    pass
+    def __init__(self, msg='', slicing_shape=None):
+        super().__init__(msg)
+        self.slicing_shape = slicing_shape
 
 
 def slice_to_begin_len_stride(slice_: slice, max_len: int) -> Tuple[int, int, int]:
@@ -182,14 +184,22 @@ def sanitize_indices(
     begin_len_stride = []
     found_ellipsis = False
     squeeze = []
-    dim = 0
+    is_null_slice = False
     for item in index_lst:
         d = len(begin_len_stride)
         if isinstance(item, slice):
-            begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
+            try:
+                begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
+            except NullSlicingException:
+                is_null_slice = True
+                begin_len_stride.append((None, 0, None))
         elif isinstance(item, numbers.Number):
-            begin_len_stride.append(int_to_begin_len_stride(int(item), max_shape[d]))
-            squeeze.append(dim)
+            squeeze.append(d)
+            try:
+                begin_len_stride.append(int_to_begin_len_stride(int(item), max_shape[d]))
+            except NullSlicingException:
+                is_null_slice = True
+                begin_len_stride.append((None, 0, None))
         elif isinstance(item, type(Ellipsis)):
             if found_ellipsis:
                 raise ValueError("Only one ellipsis may be used")
@@ -198,11 +208,12 @@ def sanitize_indices(
                 begin_len_stride.append((0, max_shape[len(begin_len_stride)], 1))
         else:
             raise TypeError(type_msg.format(type(item)))
-        dim = len(begin_len_stride)
 
     roi_begin, roi_shape, stride = zip(*begin_len_stride)
-    squeeze = tuple(squeeze) if squeeze else None
-    return roi_begin, roi_shape, stride, squeeze
+    if is_null_slice:
+        raise NullSlicingException("Slicing has a 0-length dimension", roi_shape)
+    else:
+        return roi_begin, roi_shape, stride, tuple(squeeze)
 
 
 def getitem(
@@ -222,23 +233,21 @@ def getitem(
     """
     try:
         begin, shape, stride, squeeze = sanitize_indices(args, max_shape)
-    except NullSlicingException:
-        # todo: could be mixture of 0 and non-zero lengths
-        return np.empty((0,) * len(max_shape), dtype=dtype)
+    except NullSlicingException as e:
+        return np.empty(e.slicing_shape, dtype=dtype)
 
     arr = np.asarray(read_fn(begin, shape), dtype=dtype)
-    if (
-        isinstance(args, tuple)
-        and len(args) == len(max_shape)
-        and all(isinstance(i, int) for i in args)
-    ):
-        return arr.item()
 
-    if set(stride) == {1}:
+    if set(stride) != {1}:
+        stride_slices = tuple(slice(None, None, s) for s in stride)
+        arr = arr[stride_slices]
+
+    if len(squeeze) == len(shape):
+        return arr.flatten()[0]
+    elif squeeze:
+        return arr.squeeze(squeeze)
+    else:
         return arr
-
-    stride_slices = tuple(slice(None, None, s) for s in stride)
-    return arr[stride_slices].squeeze(squeeze)
 
 
 def setitem(
