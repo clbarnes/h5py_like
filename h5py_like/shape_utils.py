@@ -3,7 +3,7 @@ from collections import deque
 from concurrent.futures import as_completed
 from concurrent.futures.thread import ThreadPoolExecutor
 
-from typing import Iterable, Callable, Tuple, Any, Iterator, TypeVar, Union
+from typing import Iterable, Callable, Tuple, Any, Iterator, TypeVar, Union, Optional
 from itertools import islice, product
 
 import numpy as np
@@ -144,15 +144,16 @@ SliceLike = Union[ellipsis, slice, int]
 SliceArgs = TypeVar("SliceArgs", SliceLike, Tuple[SliceLike])
 
 
-def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...]]:
+def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], Optional[Tuple[int, ...]]]:
     """
     Given arguments as usually passed to __getitem__,
     convert them into tuples of positive integers describing the
     offset, shape (total, as if unstrided), and striding of the query.
+    Also returns a tuple of dimensions to squeeze (i.e. the slice argument was an integer).
 
     :param args: arguments as passed to __getitem__
     :param max_shape: maximum shape of the array-like dataset
-    :return: start, shape, and strides over each dimension
+    :return: start, shape, and strides over each dimension, and a tuple of which dimensions should be squeezed (None if none of them)
     """
     type_msg = 'Advanced selection inappropriate. ' \
                'Only numbers, slices (`:`), and ellipsis (`...`) are valid indices (or tuples thereof); got {}'
@@ -172,12 +173,15 @@ def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple
 
     begin_len_stride = []
     found_ellipsis = False
+    squeeze = []
+    dim = 0
     for item in index_lst:
         d = len(begin_len_stride)
         if isinstance(item, slice):
             begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
         elif isinstance(item, numbers.Number):
             begin_len_stride.append(int_to_begin_len_stride(int(item), max_shape[d]))
+            squeeze.append(dim)
         elif isinstance(item, type(Ellipsis)):
             if found_ellipsis:
                 raise ValueError("Only one ellipsis may be used")
@@ -186,9 +190,11 @@ def sanitize_indices(args: SliceArgs, max_shape: Tuple[int, ...]) -> Tuple[Tuple
                 begin_len_stride.append((0, max_shape[len(begin_len_stride)], 1))
         else:
             raise TypeError(type_msg.format(type(item)))
+        dim = len(begin_len_stride)
 
     roi_begin, roi_shape, stride = zip(*begin_len_stride)
-    return roi_begin, roi_shape, stride
+    squeeze = tuple(squeeze) if squeeze else None
+    return roi_begin, roi_shape, stride, squeeze
 
 
 def getitem(
@@ -205,7 +211,7 @@ def getitem(
     :return: numpy array of the returned data with the requested dtype
     """
     try:
-        begin, shape, stride = sanitize_indices(args, max_shape)
+        begin, shape, stride, squeeze = sanitize_indices(args, max_shape)
     except NullSlicingException:
         # todo: could be mixture of 0 and non-zero lengths
         return np.empty((0,)*len(max_shape), dtype=dtype)
@@ -218,7 +224,7 @@ def getitem(
         return arr
 
     stride_slices = tuple(slice(None, None, s) for s in stride)
-    return arr[stride_slices]
+    return arr[stride_slices].squeeze(squeeze)
 
 
 def setitem(
@@ -235,7 +241,7 @@ def setitem(
     :param dtype: data type to write
     :param write_fn: function which takes an offset as a tuple of integers, and a numpy array, and writes to an underlying dataset
     """
-    begin, shape, stride = sanitize_indices(args, max_shape)
+    begin, shape, stride, _ = sanitize_indices(args, max_shape)
     if set(stride) != {1}:
         raise NotImplementedError("Strided writes are not supported")
 
