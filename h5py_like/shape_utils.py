@@ -265,7 +265,7 @@ def setitem(
 ):
     """
     Use a given function to insert data into an underlying dataset.
-    Does not support striding or broadcasting.
+    Does not support striding or broadcasting other than scalar.
 
     :param args: index arguments as passed to __setitem__
     :param array: array-like data to write
@@ -299,6 +299,8 @@ def setitem(
             raise
 
     # item_arr = rectify_shape(item_arr, shape)
+    if shape != array.shape:
+        raise ValueError("Extents of requested write go beyond array bounds")
 
     return write_fn(begin, item_arr)
 
