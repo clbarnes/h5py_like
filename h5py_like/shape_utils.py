@@ -187,12 +187,14 @@ def sanitize_indices(
     is_null_slice = False
     for item in index_lst:
         d = len(begin_len_stride)
+
         if isinstance(item, slice):
             try:
                 begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
             except NullSlicingException:
                 is_null_slice = True
                 begin_len_stride.append((None, 0, None))
+
         elif isinstance(item, numbers.Number):
             squeeze.append(d)
             try:
@@ -202,12 +204,14 @@ def sanitize_indices(
             except NullSlicingException:
                 is_null_slice = True
                 begin_len_stride.append((None, 0, None))
+
         elif isinstance(item, type(Ellipsis)):
             if found_ellipsis:
                 raise ValueError("Only one ellipsis may be used")
             found_ellipsis = True
             while len(begin_len_stride) + (len(index_lst) - d - 1) < ndim:
                 begin_len_stride.append((0, max_shape[len(begin_len_stride)], 1))
+
         else:
             raise TypeError(type_msg.format(type(item)))
 
