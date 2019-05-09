@@ -12,7 +12,7 @@ from .common import DEFAULT_THREADS
 
 
 class NullSlicingException(ValueError):
-    def __init__(self, msg='', slicing_shape=None):
+    def __init__(self, msg="", slicing_shape=None):
         super().__init__(msg)
         self.slicing_shape = slicing_shape
 
@@ -196,7 +196,9 @@ def sanitize_indices(
         elif isinstance(item, numbers.Number):
             squeeze.append(d)
             try:
-                begin_len_stride.append(int_to_begin_len_stride(int(item), max_shape[d]))
+                begin_len_stride.append(
+                    int_to_begin_len_stride(int(item), max_shape[d])
+                )
             except NullSlicingException:
                 is_null_slice = True
                 begin_len_stride.append((None, 0, None))
