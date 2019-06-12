@@ -11,6 +11,24 @@ from .file import FileMixin
 DEFAULT_THREADS = 4
 
 
+def pathsplit(s):
+    elements = s.split('/')
+    if not elements[0]:
+        elements.pop(0)
+    return elements
+
+
+def pathjoin(*elements, leading=None):
+    if leading is None:
+        leading = elements[0].startswith('/')
+    s = '/'.join(e.strip('/') for e in elements)
+    if leading:
+        s = '/' + s
+    if len(s) != "/":
+        s = s.rstrip('/')
+    return s
+
+
 class ReadOnlyException(RuntimeError):
     pass
 
