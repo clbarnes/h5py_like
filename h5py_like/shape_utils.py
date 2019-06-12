@@ -1,9 +1,10 @@
+from __future__ import annotations
 import numbers
 from collections import deque
 from concurrent.futures import as_completed
 from concurrent.futures.thread import ThreadPoolExecutor
 
-from typing import Iterable, Callable, Tuple, Any, Iterator, TypeVar, Union, Optional
+from typing import Iterable, Callable, Tuple, Any, Iterator, TypeVar, Union, NamedTuple, List
 from itertools import islice, product
 
 import numpy as np
@@ -148,78 +149,83 @@ SliceLike = Union[ellipsis, slice, int]
 SliceArgs = TypeVar("SliceArgs", SliceLike, Tuple[SliceLike])
 
 
-def sanitize_indices(
-    args: SliceArgs, max_shape: Tuple[int, ...]
-) -> Tuple[
-    Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], Optional[Tuple[int, ...]]
-]:
+class Roi(NamedTuple):
+    """ROI described by positive integers.
     """
-    Given arguments as usually passed to __getitem__,
-    convert them into tuples of positive integers describing the
-    offset, shape (total, as if unstrided), and striding of the query.
-    Also returns a tuple of dimensions to squeeze (i.e. the slice argument was an integer).
+    start: Tuple[int]
+    shape: Tuple[int]
+    stride: Tuple[int]
+    squeeze: List[int]
 
-    :param args: arguments as passed to __getitem__
-    :param max_shape: maximum shape of the array-like dataset
-    :return: start, shape, and strides over each dimension, and a tuple of which dimensions should be squeezed (None if none of them)
-    """
-    type_msg = (
-        "Advanced selection inappropriate. "
-        "Only numbers, slices (`:`), and ellipsis (`...`) are valid indices (or tuples thereof); got {}"
-    )
-    ndim = len(max_shape)
+    @classmethod
+    def from_indices(cls, args: SliceArgs, max_shape: Tuple[int, ...]) -> Roi:
+        """
+            Given arguments as usually passed to __getitem__,
+            convert them into tuples of positive integers describing the
+            offset, shape (total, as if unstrided), and striding of the query.
+            Also returns a tuple of dimensions to squeeze (i.e. the slice argument was an integer).
 
-    if isinstance(args, tuple):
-        index_lst = list(args)
-    elif isinstance(args, (numbers.Number, slice, type(Ellipsis))):
-        index_lst = [args]
-    else:
-        raise TypeError(type_msg.format(type(args)))
+            :param args: arguments as passed to __getitem__
+            :param max_shape: maximum shape of the array-like dataset
+            :return: start, shape, and strides over each dimension, and a tuple of which dimensions should be squeezed (None if none of them)
+            """
+        type_msg = (
+            "Advanced selection inappropriate. "
+            "Only numbers, slices (`:`), and ellipsis (`...`) are valid indices (or tuples thereof); got {}"
+        )
+        ndim = len(max_shape)
 
-    if len([item for item in index_lst if item != Ellipsis]) > ndim:
-        raise TypeError("Argument sequence too long")
-    elif len(index_lst) < ndim and Ellipsis not in index_lst:
-        index_lst.append(Ellipsis)
-
-    begin_len_stride = []
-    found_ellipsis = False
-    squeeze = []
-    is_null_slice = False
-    for item in index_lst:
-        d = len(begin_len_stride)
-
-        if isinstance(item, slice):
-            try:
-                begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
-            except NullSlicingException:
-                is_null_slice = True
-                begin_len_stride.append((None, 0, None))
-
-        elif isinstance(item, numbers.Number):
-            squeeze.append(d)
-            try:
-                begin_len_stride.append(
-                    int_to_begin_len_stride(int(item), max_shape[d])
-                )
-            except NullSlicingException:
-                is_null_slice = True
-                begin_len_stride.append((None, 0, None))
-
-        elif isinstance(item, type(Ellipsis)):
-            if found_ellipsis:
-                raise ValueError("Only one ellipsis may be used")
-            found_ellipsis = True
-            while len(begin_len_stride) + (len(index_lst) - d - 1) < ndim:
-                begin_len_stride.append((0, max_shape[len(begin_len_stride)], 1))
-
+        if isinstance(args, tuple):
+            index_lst = list(args)
+        elif isinstance(args, (numbers.Number, slice, type(Ellipsis))):
+            index_lst = [args]
         else:
-            raise TypeError(type_msg.format(type(item)))
+            raise TypeError(type_msg.format(type(args)))
 
-    roi_begin, roi_shape, stride = zip(*begin_len_stride)
-    if is_null_slice:
-        raise NullSlicingException("Slicing has a 0-length dimension", roi_shape)
-    else:
-        return roi_begin, roi_shape, stride, tuple(squeeze)
+        if len([item for item in index_lst if item != Ellipsis]) > ndim:
+            raise TypeError("Argument sequence too long")
+        elif len(index_lst) < ndim and Ellipsis not in index_lst:
+            index_lst.append(Ellipsis)
+
+        begin_len_stride = []
+        found_ellipsis = False
+        squeeze = []
+        is_null_slice = False
+        for item in index_lst:
+            d = len(begin_len_stride)
+
+            if isinstance(item, slice):
+                try:
+                    begin_len_stride.append(slice_to_begin_len_stride(item, max_shape[d]))
+                except NullSlicingException:
+                    is_null_slice = True
+                    begin_len_stride.append((None, 0, None))
+
+            elif isinstance(item, numbers.Number):
+                squeeze.append(d)
+                try:
+                    begin_len_stride.append(
+                        int_to_begin_len_stride(int(item), max_shape[d])
+                    )
+                except NullSlicingException:
+                    is_null_slice = True
+                    begin_len_stride.append((None, 0, None))
+
+            elif isinstance(item, type(Ellipsis)):
+                if found_ellipsis:
+                    raise ValueError("Only one ellipsis may be used")
+                found_ellipsis = True
+                while len(begin_len_stride) + (len(index_lst) - d - 1) < ndim:
+                    begin_len_stride.append((0, max_shape[len(begin_len_stride)], 1))
+
+            else:
+                raise TypeError(type_msg.format(type(item)))
+
+        roi_begin, roi_shape, stride = zip(*begin_len_stride)
+        if is_null_slice:
+            raise NullSlicingException("Slicing has a 0-length dimension", roi_shape)
+        else:
+            return Roi(roi_begin, roi_shape, stride, squeeze)
 
 
 def getitem(
@@ -238,7 +244,7 @@ def getitem(
     :return: numpy array of the returned data with the requested dtype
     """
     try:
-        begin, shape, stride, squeeze = sanitize_indices(args, max_shape)
+        begin, shape, stride, squeeze = Roi.from_indices(args, max_shape)
     except NullSlicingException as e:
         return np.empty(e.slicing_shape, dtype=dtype)
 
@@ -273,7 +279,7 @@ def setitem(
     :param dtype: data type to write
     :param write_fn: function which takes an offset as a tuple of integers, and a numpy array, and writes to an underlying dataset
     """
-    begin, shape, stride, _ = sanitize_indices(args, max_shape)
+    begin, shape, stride, _ = Roi.from_indices(args, max_shape)
     if set(stride) != {1}:
         raise NotImplementedError("Strided writes are not supported")
 
