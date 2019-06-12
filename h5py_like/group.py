@@ -9,15 +9,6 @@ from .common import H5ObjectLike
 from .dataset import DatasetBase
 
 
-def recurse_items(group_or_dataset: H5ObjectLike):
-    if isinstance(group_or_dataset, DatasetBase):
-        yield group_or_dataset
-    else:
-        for key, value in group_or_dataset.items():
-            yield key, value
-            yield from recurse_items(value)
-
-
 class GroupBase(H5ObjectLike, ABC):
     """ Represents an HDF5-like group.
     """
@@ -111,7 +102,7 @@ class GroupBase(H5ObjectLike, ABC):
         TypeError is raised if something with that name already exists that
         isn't a group.
         """
-        if not name in self:
+        if name not in self:
             return self.create_group(name)
 
         group = self[name]
@@ -181,6 +172,14 @@ class GroupBase(H5ObjectLike, ABC):
         self.copy(source, dest)
         del self[source]
 
+    def _recurse(self):
+        for k, v in self.items():
+            yield k, v
+            try:
+                yield from v._recurse()
+            except AttributeError:
+                pass
+
     def visit(self, func: Callable[[str], Optional[Any]]) -> Optional[Any]:
         """ Recursively visit all names in this group and subgroups (HDF5 1.8).
         You supply a callable (function, method or callable object); it
@@ -196,7 +195,7 @@ class GroupBase(H5ObjectLike, ABC):
         >>> list_of_names = []
         >>> f.visit(list_of_names.append)
         """
-        for key, _ in recurse_items(self):
+        for key, _ in self._recurse():
             result = func(key)
             if result is not None:
                 return result
@@ -220,7 +219,7 @@ class GroupBase(H5ObjectLike, ABC):
         >>> f = File('foo.hdf5')
         >>> f.visititems(func)
         """
-        for key, val in recurse_items(self):
+        for key, val in self._recurse():
             result = func(key, val)
             if result is not None:
                 return result

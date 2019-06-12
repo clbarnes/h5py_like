@@ -3,7 +3,7 @@ from collections import MutableMapping
 
 import numpy as np
 
-from h5py_like.common import Mode, ReadOnlyException, WriteModeMixin
+from h5py_like.common import Mode, WriteModeMixin
 
 
 class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):

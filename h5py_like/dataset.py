@@ -5,8 +5,7 @@ from contextlib import contextmanager
 import numpy as np
 from typing import Tuple, Optional, Any, Union, Iterator
 
-from h5py_like.shape_utils import getitem, setitem
-from .common import H5ObjectLike, ReadOnlyException, Mode
+from .common import H5ObjectLike, Mode
 
 
 class DatasetBase(H5ObjectLike, ABC):
