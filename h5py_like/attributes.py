@@ -1,9 +1,10 @@
 from abc import ABC
-from collections import MutableMapping
+from collections.abc import MutableMapping
 
 import numpy as np
 
-from h5py_like.common import Mode, WriteModeMixin
+from .common import Mode
+from h5py_like.base import WriteModeMixin
 
 
 class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):

@@ -1,2 +1,3 @@
 numpy
-enum34_custom
+pytest
+h5py

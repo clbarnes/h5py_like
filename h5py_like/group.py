@@ -1,15 +1,15 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections import Callable
+from collections.abc import Callable, MutableMapping
 
 import numpy as np
 from typing import Any, Optional
 
-from .common import H5ObjectLike
+from h5py_like.base import H5ObjectLike
 from .dataset import DatasetBase
 
 
-class GroupBase(H5ObjectLike, ABC):
+class GroupBase(H5ObjectLike, MutableMapping, ABC):
     """ Represents an HDF5-like group.
     """
     @abstractmethod

@@ -5,10 +5,12 @@ from contextlib import contextmanager
 import numpy as np
 from typing import Tuple, Optional, Any, Union, Iterator
 
-from .common import H5ObjectLike, Mode
+from .shape_utils import IndexableArrayLike
+from .common import Mode
+from h5py_like.base import H5ObjectLike
 
 
-class DatasetBase(H5ObjectLike, ABC):
+class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
     """
         Represents an HDF5-like dataset
     """
@@ -147,41 +149,53 @@ class DatasetBase(H5ObjectLike, ABC):
 
         Don't forget to use ``self._astype or self.dtype`` when setting the read dtype,
         to be compatible with the ``Dataset.astype`` context manager.
+
+        The _getitem method is a helper for this.
         """
 
     @abstractmethod
     def __setitem__(self, args, val):
         """ Write to the HDF5-like dataset from a Numpy array.
+
+        The _setitem method is a helper for this.
         """
 
-    @abstractmethod
     def read_direct(self, dest, source_sel=None, dest_sel=None):
-        """ Read data directly from HDF5 into an existing NumPy array.
+        """ Read data directly from the underlying array into an existing NumPy array.
         The destination array must be C-contiguous and writable.
         Selections must be the output of numpy.s_[<args>].
-        Broadcasting is supported for simple indexing.
-        """
-        raise NotImplementedError()
 
-    @abstractmethod
+        The default implementation just reads and writes as usual, and therefore has no speedups.
+        """
+        if source_sel is None:
+            source_sel = Ellipsis
+
+        if dest_sel is None:
+            dest[...] = self[source_sel]
+        else:
+            dest[dest_sel] = self[source_sel]
+
     def write_direct(self, source, source_sel=None, dest_sel=None):
         """ Write data directly to HDF5 from a NumPy array.
         The source array must be C-contiguous.  Selections must be
         the output of numpy.s_[<args>].
-        Broadcasting is supported for simple indexing.
+
+        The default implementation just reads and writes as usual, and therefore has no speedups.
         """
-        raise NotImplementedError()
+        if source_sel is None:
+            source_sel = Ellipsis
+
+        if dest_sel is None:
+            self[...] = source[source_sel]
+        else:
+            self[dest_sel] = source[source_sel]
 
     def __array__(self, dtype=None):
         """ Create a Numpy array containing the whole dataset.  DON'T THINK
         THIS MEANS DATASETS ARE INTERCHANGEABLE WITH ARRAYS.  For one thing,
         you have to read the whole dataset every time this method is called.
         """
-        arr = np.empty(self.shape, dtype=self.dtype if dtype is None else dtype)
-
-        # Special case for (0,)*-shape datasets
-        if np.product(self.shape, dtype=np.ulonglong) == 0:
-            return arr
-
-        self.read_direct(arr)
+        arr = self[...]
+        if dtype is not None:
+            arr = arr.astype(dtype)
         return arr

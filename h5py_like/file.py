@@ -8,7 +8,7 @@ class FileMixin(ABC):
     @abstractmethod
     def __init__(self, name, mode=Mode.READ_WRITE_CREATE):
         self.filename: Path = Path(name).absolute()
-        self.mode: Mode = Mode.from_str(mode)
+        self._mode: Mode = Mode.from_str(mode)
 
     @property
     def parent(self) -> None:
@@ -26,3 +26,7 @@ class FileMixin(ABC):
 
     def close(self):
         pass
+
+    @property
+    def mode(self):
+        return self._mode

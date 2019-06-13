@@ -31,9 +31,10 @@ e.g.
 Create your own `Dataset`, `Group`, `File`, and `AttributeManager` classes, 
 implementing their abstract methods.
 Because `File`s should subclass your `Group`, the base class here is a mixin.
+It should come before the `Group` in the MRO.
 
 ```python
-from h5py_like import DatasetBase, GroupBase, AttributeManagerBase, FileMixin, mutation
+from h5py_like import DatasetBase, GroupBase, AttributeManagerBase, FileMixin
 
 class MyDataset(DatasetBase):
     # ... implement abstract methods
@@ -43,7 +44,7 @@ class MyGroup(GroupBase):
     # ... implement abstract methods
     pass
     
-class MyFile(MyGroup, FileMixin):
+class MyFile(FileMixin, MyGroup):
     # ... implement abstract methods
     pass
 
