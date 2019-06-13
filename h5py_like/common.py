@@ -1,22 +1,5 @@
 from enum import Enum
-
-
-def pathsplit(s):
-    elements = s.split('/')
-    if not elements[0]:
-        elements.pop(0)
-    return elements
-
-
-def pathjoin(*elements, leading=None):
-    if leading is None:
-        leading = elements[0].startswith('/')
-    s = '/'.join(e.strip('/') for e in elements)
-    if leading:
-        s = '/' + s
-    if len(s) != "/":
-        s = s.rstrip('/')
-    return s
+from pathlib import PurePosixPath
 
 
 class ReadOnlyException(RuntimeError):
@@ -32,6 +15,12 @@ class StrEnum(str, Enum):
             if not isinstance(arg, str):
                 raise TypeError('Not text %s:' % arg)
         return super(StrEnum, cls).__new__(cls, *args)
+
+    def __str__(self):
+        return self.value
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class Mode(StrEnum):
@@ -58,4 +47,7 @@ class Mode(StrEnum):
     def __eq__(self, other):
         if not isinstance(other, type(self)) and other == 'w-':
             other = 'x'
-        super().__eq__(other)
+        return super().__eq__(other)
+
+
+Name = PurePosixPath

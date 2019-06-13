@@ -5,7 +5,7 @@ from collections.abc import Callable, MutableMapping
 import numpy as np
 from typing import Any, Optional
 
-from h5py_like.base import H5ObjectLike
+from .base import H5ObjectLike
 from .dataset import DatasetBase
 
 
@@ -223,3 +223,10 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
             result = func(key, val)
             if result is not None:
                 return result
+
+    def __eq__(self, other):
+        return all((
+            isinstance(other, type(self)),
+            self.name == other.name,
+            self.parent == other.parent,
+        ))

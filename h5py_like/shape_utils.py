@@ -39,7 +39,10 @@ def slice_to_start_len_stride(slice_: slice, max_len: int) -> StartLenStride:
     :return: tuple of positive integer start, length, +ve or -ve stride
     :raises: NullSlicingException
     """
-    start, stop, stride = slice_.indices(max_len)
+    start, old_stop, stride = slice_.indices(max_len)
+    stop = max(old_stop, 0)
+    if stop > old_stop:
+        start += abs(old_stop)
     shape = stop - start
 
     if shape == 0 or shape * stride < 0:
@@ -235,7 +238,7 @@ class IndexableArrayLike(ABC):
         self,
         args: SliceArgs,
         array: np.ndarray,
-        write_fn: Callable[[Tuple[int, ...], np.ndarray], np.ndarray],
+        write_fn: Callable[[Tuple[int, ...], np.ndarray], None],
     ):
         """
         Use a given function to insert data into an underlying dataset.

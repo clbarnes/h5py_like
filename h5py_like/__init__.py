@@ -1,4 +1,4 @@
-from .common import Mode
+from .common import Mode, Name
 from .base import mutation
 from .group import GroupBase
 from .file import FileMixin
@@ -7,4 +7,4 @@ from .attributes import AttributeManagerBase
 
 from .version import __version__, __version_info__
 
-__all__ = ["GroupBase", "FileMixin", "DatasetBase", "AttributeManagerBase", "mutation"]
+__all__ = ["GroupBase", "FileMixin", "DatasetBase", "AttributeManagerBase", "mutation", "Name"]

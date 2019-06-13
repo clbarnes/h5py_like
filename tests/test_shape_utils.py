@@ -9,10 +9,11 @@ LEN = 10
 @pytest.mark.parametrize(
     ["sl", "expected"],
     [
-        (slice(None), (0, 10, 1)),
+        (slice(None), (0, LEN, 1)),
         (slice(1, 5, 2), (1, 4, 2)),
         (slice(-5, -1), (5, 4, 1)),
         (slice(5, 1, -2), (1, 4, -2)),
+        (slice(None, None, -5), (0, LEN, -5)),
     ]
 )
 def test_slice_to_start_len_stride(sl, expected):
@@ -102,6 +103,17 @@ def test_indexer_ellipsis():
     )
 
 
+def test_implied_ellipsis():
+    indexer = Indexer(SHAPE)
+    test = indexer[1:2]
+    assert test == Roi(
+        start=(1, 0, 0),
+        read_shape=(1, 20, 30),
+        stride=(1, 1, 1),
+        out_shape=(1, 20, 30),
+    )
+
+
 def test_indexer_ellipsis_and_int():
     indexer = Indexer(SHAPE)
     test0 = indexer[..., 1, 1]
@@ -137,4 +149,15 @@ def test_indexer_newaxis():
         read_shape=(1, 1, 1),
         stride=(1, 1, 1),
         out_shape=(1, 1, 1, 1),
+    )
+
+
+def test_indexer_stride():
+    indexer = Indexer(SHAPE)
+    test = indexer[::5, ::-5, :]
+    assert test == Roi(
+        start=(0, 0, 0),
+        read_shape=SHAPE,
+        stride=(5, -5, 1),
+        out_shape=(2, 4, 30),
     )

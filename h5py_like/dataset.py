@@ -199,3 +199,10 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         if dtype is not None:
             arr = arr.astype(dtype)
         return arr
+
+    def __eq__(self, other):
+        return all((
+            isinstance(other, type(self)),
+            self.name == other.name,
+            self.parent == other.parent,
+        ))

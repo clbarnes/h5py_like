@@ -43,7 +43,7 @@ class H5ObjectLike(WriteModeMixin, ABC):
         current = self
         while True:
             parent = current.parent
-            if parent is None:
+            if parent is current:
                 return current
 
     @property
