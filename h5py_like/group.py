@@ -5,7 +5,7 @@ from collections.abc import Callable, MutableMapping
 import numpy as np
 from typing import Any, Optional
 
-from .base import H5ObjectLike
+from .base import H5ObjectLike, mutation
 from .dataset import DatasetBase
 
 
@@ -34,6 +34,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
                 this = this._create_child_group(name)
         return this
 
+    @mutation
     def create_group(self, name) -> GroupBase:
         """ Create and return a new subgroup.
         Name may be absolute or relative.  Fails if the target name already
@@ -54,6 +55,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         """
         pass
 
+    @mutation
     def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds) -> DatasetBase:
         """ Create a new HDF5-like dataset
         name
@@ -204,6 +206,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         ['MyGroup', 'MyCopy']
         """
 
+    @mutation
     def move(self, source, dest):
         """ Move a link to a new location in the file.
         If "source" is a hard link, this effectively renames the object.  If

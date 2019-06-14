@@ -7,7 +7,7 @@ from typing import Tuple, Optional, Any, Union, Iterator
 
 from .shape_utils import IndexableArrayLike
 from .common import Mode
-from h5py_like.base import H5ObjectLike
+from h5py_like.base import H5ObjectLike, mutation
 
 
 class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
@@ -177,6 +177,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         else:
             dest[dest_sel] = self[source_sel]
 
+    @mutation
     def write_direct(self, source, source_sel=None, dest_sel=None):
         """ Write data directly to HDF5 from a NumPy array.
         The source array must be C-contiguous.  Selections must be

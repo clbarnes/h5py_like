@@ -24,21 +24,27 @@ e.g.
 
 - Access modes are converted to enums, although they are largely compatible with the `str` forms
   - `"x"` is preferred over `"w-"` for exclusive creation
-- Singleton dimensions are not squeezed out of returned arrays
 
 ## Usage
+
+See the trivial HDF5 implementation in [the tests package](./tests/h5_impl.py).
 
 Create your own `Dataset`, `Group`, `File`, and `AttributeManager` classes, 
 implementing their abstract methods.
 Because `File`s should subclass your `Group`, the base class here is a mixin.
 It should come before the `Group` in the MRO.
 
+Methods containing write operations should be given the `@mutation` decorator.
+This checks their `mode` attribute and raises an error if it is readonly.
+
 ```python
-from h5py_like import DatasetBase, GroupBase, AttributeManagerBase, FileMixin
+from h5py_like import DatasetBase, GroupBase, AttributeManagerBase, FileMixin, mutation
 
 class MyDataset(DatasetBase):
     # ... implement abstract methods
-    pass
+    @mutation
+    def __setitem__(self, idx, val):
+        ...
     
 class MyGroup(GroupBase):
     # ... implement abstract methods
@@ -53,9 +59,6 @@ class MyAttributeManager(AttributeManagerBase):
     pass
 
 ```
-
-Methods containing write operations should be given the `@mutation` decorator.
-This checks their `mode` attribute and raises an error if it is readonly.
 
 ### Helpers
 
