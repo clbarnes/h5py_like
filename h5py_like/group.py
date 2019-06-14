@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from .base import H5ObjectLike, mutation
 from .dataset import DatasetBase
+from .common import classname
 
 
 class GroupBase(H5ObjectLike, MutableMapping, ABC):
@@ -147,6 +148,10 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
 
     @abstractmethod
     def _get_child(self, name) -> H5ObjectLike:
+        """Get an object (a concrete Dataset or Group) which is a direct child of this object.
+
+        Raise a KeyError if it's not found.
+        """
         pass
 
     def __getitem__(self, name) -> H5ObjectLike:
@@ -268,6 +273,9 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
             result = func(key, val)
             if result is not None:
                 return result
+
+    def __str__(self):
+        return f"<{classname(self)}(name='{self.name}', file={self.file})>"
 
     def __eq__(self, other):
         try:

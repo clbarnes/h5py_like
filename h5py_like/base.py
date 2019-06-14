@@ -22,7 +22,7 @@ def mutation(fn):
     @wraps(fn)
     def wrapped(obj: WriteModeMixin, *args, **kwargs):
         obj.raise_on_readonly()
-        return fn(*args, **kwargs)
+        return fn(obj, *args, **kwargs)
     return wrapped
 
 
@@ -44,11 +44,10 @@ class H5ObjectLike(WriteModeMixin, ABC):
 
     @property
     def file(self) -> "FileMixin":
-        current = self
-        while True:
-            parent = current.parent
-            if parent is current:
-                return current
+        p = self
+        for p in self._ancestors():
+            pass
+        return p
 
     @property
     @abstractmethod
@@ -75,14 +74,12 @@ class H5ObjectLike(WriteModeMixin, ABC):
     def _relative_name(self, other: str) -> Optional[str]:
         """Get the relative name of the other object from this one.
 
-        Raises ValueError if they cannot be reached.
+        Raises ValueError if they cannot be reached; return None if it is this object.
         """
         name = Name(self.name)
-        if other.startswith("/"):
-            out = str(Name(other).relative_to(name))
-            return None if out == '.' else out
-        else:
-            return str(name / other)
+        other = self._absolute_name(other)
+        out = str(Name(other).relative_to(name))
+        return None if out == '.' else out
 
     def _ancestor_and_relative_name(self, other: str) -> Tuple[H5ObjectLike, Optional[str]]:
         """Get the most recent common ancestor with the other name,

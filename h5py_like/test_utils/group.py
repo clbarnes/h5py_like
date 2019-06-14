@@ -1,12 +1,15 @@
 from abc import ABC
+from copy import deepcopy
 
 import numpy as np
 
-from h5py_like import GroupBase
-from .common import check_attrs_rw
+from h5py_like import GroupBase, Name
+from .common import check_attrs_rw, ds_kwargs
 
 
 class GroupLikeTestsMixin(ABC):
+    dataset_kwargs = deepcopy(ds_kwargs)
+
     def test_attrs(self, obj: GroupBase):
         check_attrs_rw(obj.attrs)
 
@@ -14,22 +17,24 @@ class GroupLikeTestsMixin(ABC):
         name = "another"
         g2 = obj.create_group(name)
         assert g2.parent == obj
-        assert g2.name == f"{obj.name}/{name}"
+        assert g2.name == str(Name(obj.name) / name)
         assert name in obj
 
     def test_create_dataset(self, obj: GroupBase):
-        name = "dataset"
-        shape = (10, 10, 10)
-        dtype = np.dtype('uint16')
-        ds = obj.create_dataset(name, shape=shape, dtype=dtype)
-        assert ds.name == f"{obj.name}/{name}"
-        assert ds.shape == shape
-        assert ds.dtype == dtype
+        dsk = self.dataset_kwargs
+        ds = obj.create_dataset(**dsk)
+        assert ds.name == str(Name(obj.name) / dsk["name"])
+        assert ds.shape == dsk["shape"]
+        assert ds.dtype == dsk["dtype"]
 
     def test_create_dataset_from_data(self, obj: GroupBase):
-        data = np.ones((10, 10), dtype=np.dtype('uint64'))
-        ds = obj.create_dataset("test_ds", data=data)
-        np.testing.assert_equal(ds[...], data)
+        dsk = deepcopy(self.dataset_kwargs)
+        data = np.ones(
+            dsk.pop("shape"), dtype=dsk.pop("dtype")
+        )
+        del dsk["name"]
+        ds = obj.create_dataset("test_ds", data=data, **dsk)
+        np.testing.assert_array_equal(ds[...], data)
 
 
 class GroupTestBase(GroupLikeTestsMixin, ABC):

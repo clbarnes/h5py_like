@@ -6,7 +6,7 @@ import numpy as np
 from typing import Tuple, Optional, Any, Union, Iterator
 
 from .shape_utils import IndexableArrayLike
-from .common import Mode
+from .common import Mode, classname
 from h5py_like.base import H5ObjectLike, mutation
 
 
@@ -202,6 +202,9 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         if dtype is not None:
             arr = arr.astype(dtype)
         return arr
+
+    def __str__(self):
+        return f"<{classname(self)}(name='{self.name}', shape={self.shape}, dtype={self.dtype}, file={self.file})>"
 
     def __eq__(self, other):
         return all((

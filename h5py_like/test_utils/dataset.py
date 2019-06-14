@@ -1,29 +1,19 @@
 from abc import ABC
+from copy import deepcopy
 
 import numpy as np
 
-from .common import check_attrs_rw
+from .common import check_attrs_rw, ds_kwargs
 
 
 class DatasetTestBase(ABC):
-    dataset_name = "dataset"
-    dataset_shape = (10, 10, 10)
-    dataset_dtype = np.dtype('uint16')
+    dataset_kwargs = deepcopy(ds_kwargs)
 
-    def dataset(self, parent, name=None, shape=None, dtype=None, **kwargs):
-        if name is None:
-            name = self.dataset_name
-        if shape is None:
-            shape = self.dataset_shape
-        if dtype is None:
-            dtype = self.dataset_dtype
+    def dataset(self, parent, **kwargs):
+        kwds = deepcopy(self.dataset_kwargs)
+        kwds.update(kwargs)
 
-        return parent.create_dataset(
-            name,
-            shape=shape,
-            dtype=dtype,
-            **kwargs,
-        )
+        return parent.create_dataset(**kwds)
 
     def test_attrs(self, file_):
         check_attrs_rw(self.dataset(file_).attrs)
