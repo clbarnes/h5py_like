@@ -4,6 +4,10 @@ from setuptools import find_packages, setup
 with open("README.md") as f:
     readme = f.read()
 
+extras = {
+    "test": ["pytest>=4.6.3"]
+}
+
 setup(
     author="Chris Lloyd Barnes",
     author_email="barnesc@janelia.hhmi.org",
@@ -20,6 +24,7 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     include_package_data=True,
+    extras_require=extras,
     keywords="h5py",
     name="h5py_like",
     packages=find_packages(include=["h5py_like"]),

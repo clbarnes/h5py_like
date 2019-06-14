@@ -12,14 +12,48 @@ from .dataset import DatasetBase
 class GroupBase(H5ObjectLike, MutableMapping, ABC):
     """ Represents an HDF5-like group.
     """
+    _is_file = False
+
     @abstractmethod
+    def _create_child_group(self, name) -> GroupBase:
+        """Create a group which is a direct child of this object with the given name.
+
+        Should raise a TypeError if a dataset exists there,
+        or a FileExistsError if a group exists there.
+        """
+        pass
+
+    def _require_descendant_groups(self, *names):
+        this = self
+        for name in names:
+            try:
+                this = this._get_child(name)
+                if not isinstance(this, GroupBase):
+                    raise TypeError("Not a group")
+            except KeyError:
+                this = this._create_child_group(name)
+        return this
+
     def create_group(self, name) -> GroupBase:
         """ Create and return a new subgroup.
         Name may be absolute or relative.  Fails if the target name already
         exists.
         """
+        ancestor, group_names, last_name = self._descend(name)
+        parent = ancestor._require_descendant_groups(*group_names)
+        if last_name in parent:
+            raise FileExistsError(f"Group or dataset found at '{name}'")
+        return parent._create_child_group(last_name)
 
     @abstractmethod
+    def _create_child_dataset(self, name, shape=None, dtype=None, data=None, **kwds):
+        """Create a dataset which is a direct child of this object with the given name.
+
+        Should raise a TypeError if a group exists there,
+        or a FileExistsError if a dataset exists there.
+        """
+        pass
+
     def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds) -> DatasetBase:
         """ Create a new HDF5-like dataset
         name
@@ -35,14 +69,12 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
             Provide data to initialize the dataset.  If used, you can omit
             shape and dtype arguments.
         Keyword-only arguments:
-        chunks
-            (Tuple) Chunk shape, or True to enable auto-chunking.
-        maxshape
-            (Tuple) Make the dataset resizable up to this shape.  Use None for
-            axes you want to be unlimited.
-        fillvalue
-            (Scalar) Use this value for uninitialized parts of the dataset.
         """
+        ancestor, group_names, last_name = self._descend(name)
+        parent = ancestor._require_descendant_groups(*group_names)
+        if last_name in parent:
+            raise FileExistsError(f"Group or dataset found at '{name}'")
+        return parent._create_child_dataset(name, shape, dtype, data, **kwds)
 
     def require_dataset(self, name, shape, dtype, exact=False, **kwds) -> DatasetBase:
         """ Open a dataset, creating it if it doesn't exist.
@@ -54,7 +86,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         Raises TypeError if an incompatible object already exists, or if the
         shape or dtype don't match according to the above rules.
         """
-        if not name in self:
+        if name not in self:
             return self.create_dataset(name, *(shape, dtype), **kwds)
 
         dset = self[name]
@@ -112,8 +144,17 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         return group
 
     @abstractmethod
+    def _get_child(self, name) -> H5ObjectLike:
+        pass
+
     def __getitem__(self, name) -> H5ObjectLike:
         """ Open an object in the file """
+        ancestor, group_names, last_name = self._descend(name)
+        for group_name in group_names:
+            ancestor = ancestor._get_child(group_name)
+            if not isinstance(ancestor, GroupBase):
+                raise TypeError(f"Expected Group, got {type(ancestor)}")
+        return ancestor._get_child(last_name)
 
     @abstractmethod
     def __setitem__(self, name, obj):
@@ -173,6 +214,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         del self[source]
 
     def _recurse(self):
+        """Depth-first search"""
         for k, v in self.items():
             yield k, v
             try:
@@ -225,8 +267,12 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
                 return result
 
     def __eq__(self, other):
-        return all((
-            isinstance(other, type(self)),
-            self.name == other.name,
-            self.parent == other.parent,
-        ))
+        try:
+            return all((
+                isinstance(other, GroupBase),
+                not other._is_file,
+                self.name == other.name,
+                self.parent == other.parent,
+            ))
+        except AttributeError:
+            return False

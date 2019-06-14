@@ -6,9 +6,11 @@ from .common import Mode
 
 
 class FileMixin(ABC):
+    _is_file = True
+
     @abstractmethod
     def __init__(self, name, mode=Mode.READ_WRITE_CREATE):
-        self.filename: Path = Path(name).absolute()
+        self.filename: Path = Path(name).resolve()
         self._mode: Mode = Mode.from_str(mode)
 
     @property
@@ -37,8 +39,12 @@ class FileMixin(ABC):
         return '/'
 
     def __eq__(self, other):
-        return all((
-            isinstance(other, type(self)),
-            self.filename == other.filename,
-            self.mode == other.mode
-        ))
+        try:
+            return all((
+                isinstance(other, FileMixin),
+                other._is_file,
+                self.filename == other.filename,
+                self.mode == other.mode,
+            ))
+        except AttributeError:
+            return True

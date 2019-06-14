@@ -62,14 +62,47 @@ This checks their `mode` attribute and raises an error if it is readonly.
 `h5py_like.shape_utils` contains a variety of helper functions,
 to simulate numpy's flexibility.
 
-For example, if you have a function which takes a start index and size to read,
-the `get_item` function adds compatibility with positive and negative
-integers/slices, striding, ellipses (explicit and implicit), reading individual scalars,
-and reading arrays with 0-length dimensions.
+### Testing
 
-If you have a function which takes a start index and an array to write, 
-`set_item` adds compatibility with positive and negative
-integers/slices, ellipses (explicit and implicit), and broadcasting scalars.
+A suite of tests for basic h5py-like functionality is included.
+To use it, you must be using pytest, and define a fixture which yields an instance of your `File` implementation.
+Then you just need to subclass the provided abstract test classes:
+
+conftest.py
+
+```python
+import pytest
+
+@pytest.fixture
+def file_():
+    yield MyFile("my_name")
+```
+
+test_implementation.py
+
+```python
+from h5py_like.test_utils import FileTestBase, GroupTestBase, DatasetTestBase
+
+# concrete class names must start with Test
+
+class TestFile(FileTestBase):
+    pass
+    
+class TestGroup(GroupTestBase):
+    pass
+
+class TestDataset(DatasetTestBase):
+    pass
+
+```
+
+The provided base classes test some of the expected functionality, even if you don't write any methods in your test classes.
+You can add more tests if you like, or override those you want to change, or decorate any you to skip or xfail.
+
+The `GroupTestBase` provides a `group_name` attribute and a `self.group(parent)` method for creating a group of that name.
+
+The `DatasetTestBase` provides `dataset_` `name`, `shape`, and `dtype`, and a `self.dataset(parent)` method for making that dataset.
+
 
 ## Notes
 

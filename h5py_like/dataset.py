@@ -14,6 +14,8 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
     """
         Represents an HDF5-like dataset
     """
+    _is_file = False
+
     def __init__(self, mode: Mode = Mode.default()):
         self._astype = None
         super().__init__(mode)

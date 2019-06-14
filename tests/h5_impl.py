@@ -95,45 +95,29 @@ class Dataset(DatasetBase):
 
 
 class Group(GroupBase):
+    def _create_child_group(self, name) -> GroupBase:
+        gr = self._impl.create_group(name)
+        return Group(self, gr)
+
+    def _create_child_dataset(self, name, shape=None, dtype=None, data=None, **kwds):
+        ds = self._impl.create_dataset(name, shape, dtype, data, **kwds)
+        return Dataset(self, ds)
+
+    def _get_child(self, name) -> H5ObjectLike:
+        obj = self._impl[name]
+        if isinstance(obj, h5py.Group):
+            cls = Group
+        elif isinstance(obj, h5py.Dataset):
+            cls = Dataset
+        else:
+            raise TypeError()
+        return cls(self, obj)
+
     def __init__(self, parent, group: h5py.Group):
         self._parent = parent
         self._impl = group
         self._attrs = AttributeManager(self, self._impl.attrs)
         super().__init__(parent.mode)
-
-    def create_group(self, name) -> GroupBase:
-        gr = self._impl.create_group(name)
-        return Group(self, gr)
-
-    def create_dataset(self, name, shape=None, dtype=None, data=None, **kwds) -> DatasetBase:
-        ds = self._impl.create_dataset(name, shape=shape, dtype=dtype, data=data, **kwds)
-        return Dataset(self, ds)
-
-    def __getitem__(self, name) -> H5ObjectLike:
-        item = self._impl[name]
-
-        items = [item]
-        while items[-1].parent != items[-1]:
-            items.append(items[-1].parent)
-
-        parent = self.file
-        items.pop()  # we already know the file
-        if items:
-            last, *groups = items
-        else:
-            return parent
-
-        for group in reversed(groups):
-            parent = Group(parent, group)
-
-        if isinstance(last, h5py.Group):
-            cls = Group
-        elif isinstance(last, h5py.Dataset):
-            cls = Dataset
-        else:
-            raise TypeError
-
-        return cls(parent, last)
 
     def __setitem__(self, name, obj):
         self._impl[name] = obj._impl
@@ -145,7 +129,7 @@ class Group(GroupBase):
 
     @property
     def attrs(self) -> "AttributeManagerBase":
-        return self._impl.attrs
+        return self._attrs
 
     @property
     def name(self) -> str:

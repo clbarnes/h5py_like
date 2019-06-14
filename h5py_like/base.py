@@ -1,7 +1,9 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from functools import wraps
+from typing import Tuple, List, Iterator, Optional
 
-from .common import ReadOnlyException, Mode
+from .common import ReadOnlyException, Mode, Name
 
 
 class WriteModeMixin:
@@ -25,6 +27,8 @@ def mutation(fn):
 
 
 class H5ObjectLike(WriteModeMixin, ABC):
+    _is_file = False
+
     def __init__(self, mode: Mode = Mode.default()):
         self._mode = Mode.from_str(mode)
 
@@ -54,3 +58,50 @@ class H5ObjectLike(WriteModeMixin, ABC):
     @property
     def mode(self):
         return self.parent.mode
+
+    def _ancestors(self) -> Iterator[H5ObjectLike]:
+        """Iterate through ancestors (including this object) until the root"""
+        ancestor = self
+        while not ancestor._is_file:
+            yield ancestor
+            ancestor = ancestor.parent
+        yield ancestor
+
+    def _absolute_name(self, other: str) -> str:
+        """Get the hypothetical absolute name of the object at the given absolute or relative name"""
+        name = Name(self.name)
+        return str(name.joinpath(other))
+
+    def _relative_name(self, other: str) -> Optional[str]:
+        """Get the relative name of the other object from this one.
+
+        Raises ValueError if they cannot be reached.
+        """
+        name = Name(self.name)
+        if other.startswith("/"):
+            out = str(Name(other).relative_to(name))
+            return None if out == '.' else out
+        else:
+            return str(name / other)
+
+    def _ancestor_and_relative_name(self, other: str) -> Tuple[H5ObjectLike, Optional[str]]:
+        """Get the most recent common ancestor with the other name,
+        and the relative path from that ancestor to the other name"""
+        for ancestor in self._ancestors():
+            try:
+                return ancestor, ancestor._relative_name(other)
+            except ValueError as e:
+                if "does not start with" not in str(e):
+                    raise
+
+        raise RuntimeError(f"Name '{other}' is not relative to root file")
+
+    def _descend(self, other: str) -> Tuple[H5ObjectLike, List[str], Optional[str]]:
+        """Descend from the most recent common ancestor with other path, through intermediate groups,
+        to last name (None if it's an ancestor)"""
+        ancestor, relative_name = self._ancestor_and_relative_name(other)
+        if not relative_name:
+            return ancestor, [], relative_name
+
+        *mids, final = Name(relative_name).parts
+        return ancestor, list(mids), final
