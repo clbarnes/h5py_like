@@ -14,6 +14,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
     """
         Represents an HDF5-like dataset
     """
+
     _is_file = False
 
     def __init__(self, mode: Mode = Mode.default()):
@@ -82,7 +83,9 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         """Dataset chunks (or None)"""
         raise NotImplementedError()
 
-    def _sanitize_resize(self, size: Union[int, Tuple[int, ...]], axis: Optional[int] = None) -> Tuple[int, ...]:
+    def _sanitize_resize(
+        self, size: Union[int, Tuple[int, ...]], axis: Optional[int] = None
+    ) -> Tuple[int, ...]:
         if self.chunks is None:
             raise TypeError("Only chunked datasets can be resized")
 
@@ -121,7 +124,9 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         """
         size = self.len()
         if size > sys.maxsize:
-            raise OverflowError("Value too big for Python's __len__; use Dataset.len() instead.")
+            raise OverflowError(
+                "Value too big for Python's __len__; use Dataset.len() instead."
+            )
         return size
 
     def len(self) -> int:
@@ -207,8 +212,10 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         return f"<{classname(self)}(name='{self.name}', shape={self.shape}, dtype={self.dtype}, file={self.file})>"
 
     def __eq__(self, other):
-        return all((
-            isinstance(other, type(self)),
-            self.name == other.name,
-            self.parent == other.parent,
-        ))
+        return all(
+            (
+                isinstance(other, type(self)),
+                self.name == other.name,
+                self.parent == other.parent,
+            )
+        )

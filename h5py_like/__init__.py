@@ -7,4 +7,11 @@ from .attributes import AttributeManagerBase
 
 from .version import __version__, __version_info__
 
-__all__ = ["GroupBase", "FileMixin", "DatasetBase", "AttributeManagerBase", "mutation", "Name"]
+__all__ = [
+    "GroupBase",
+    "FileMixin",
+    "DatasetBase",
+    "AttributeManagerBase",
+    "mutation",
+    "Name",
+]

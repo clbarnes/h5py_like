@@ -23,6 +23,7 @@ def mutation(fn):
     def wrapped(obj: WriteModeMixin, *args, **kwargs):
         obj.raise_on_readonly()
         return fn(obj, *args, **kwargs)
+
     return wrapped
 
 
@@ -79,9 +80,11 @@ class H5ObjectLike(WriteModeMixin, ABC):
         name = Name(self.name)
         other = self._absolute_name(other)
         out = str(Name(other).relative_to(name))
-        return None if out == '.' else out
+        return None if out == "." else out
 
-    def _ancestor_and_relative_name(self, other: str) -> Tuple[H5ObjectLike, Optional[str]]:
+    def _ancestor_and_relative_name(
+        self, other: str
+    ) -> Tuple[H5ObjectLike, Optional[str]]:
         """Get the most recent common ancestor with the other name,
         and the relative path from that ancestor to the other name"""
         for ancestor in self._ancestors():

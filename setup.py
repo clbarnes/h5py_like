@@ -4,9 +4,7 @@ from setuptools import find_packages, setup
 with open("README.md") as f:
     readme = f.read()
 
-extras = {
-    "test": ["pytest>=4.6.3"]
-}
+extras = {"test": ["pytest>=4.6.3"]}
 
 setup(
     author="Chris Lloyd Barnes",

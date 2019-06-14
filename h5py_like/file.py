@@ -36,18 +36,20 @@ class FileMixin(ABC):
 
     @property
     def name(self):
-        return '/'
+        return "/"
 
     def __str__(self):
         return f"<{classname(self)}(filename='{self.filename}', mode='{self.mode}')>"
 
     def __eq__(self, other):
         try:
-            return all((
-                isinstance(other, FileMixin),
-                other._is_file,
-                self.filename == other.filename,
-                self.mode == other.mode,
-            ))
+            return all(
+                (
+                    isinstance(other, FileMixin),
+                    other._is_file,
+                    self.filename == other.filename,
+                    self.mode == other.mode,
+                )
+            )
         except AttributeError:
             return True

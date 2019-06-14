@@ -1,10 +1,6 @@
 import numpy as np
 
-ds_kwargs = {
-    "name": "dataset",
-    "shape": (10, 10, 10),
-    "dtype": np.dtype("uint16")
-}
+ds_kwargs = {"name": "dataset", "shape": (10, 10, 10), "dtype": np.dtype("uint16")}
 
 
 def check_attrs_rw(attrs):

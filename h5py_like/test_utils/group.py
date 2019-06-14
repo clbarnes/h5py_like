@@ -29,9 +29,7 @@ class GroupLikeTestsMixin(ABC):
 
     def test_create_dataset_from_data(self, obj: GroupBase):
         dsk = deepcopy(self.dataset_kwargs)
-        data = np.ones(
-            dsk.pop("shape"), dtype=dsk.pop("dtype")
-        )
+        data = np.ones(dsk.pop("shape"), dtype=dsk.pop("dtype"))
         del dsk["name"]
         ds = obj.create_dataset("test_ds", data=data, **dsk)
         np.testing.assert_array_equal(ds[...], data)

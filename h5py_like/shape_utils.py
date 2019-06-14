@@ -64,7 +64,9 @@ def int_to_start_len_stride(i: int, max_len: int) -> StartLenStride:
     if -max_len < i < 0:
         begin = i + max_len
     elif i >= max_len or i < -max_len:
-        raise IndexError("index {} is out of bounds for axis with size".format(i, max_len))
+        raise IndexError(
+            "index {} is out of bounds for axis with size".format(i, max_len)
+        )
     else:
         begin = i
 
@@ -74,6 +76,7 @@ def int_to_start_len_stride(i: int, max_len: int) -> StartLenStride:
 class Roi(NamedTuple):
     """ROI described by positive integers.
     """
+
     start: Tuple[int, ...]
     read_shape: Tuple[int, ...]
     stride: Tuple[int, ...]
@@ -101,7 +104,9 @@ class Indexer:
         self.max_shape = max_shape
         self.ndim = len(max_shape)
 
-    def _handle_newaxis_ellipses(self, index_tup: Tuple[SliceLike]) -> Tuple[List[ConcreteSliceLike], List[int]]:
+    def _handle_newaxis_ellipses(
+        self, index_tup: Tuple[SliceLike]
+    ) -> Tuple[List[ConcreteSliceLike], List[int]]:
         """
 
         :param index_tup:
@@ -264,7 +269,9 @@ class IndexableArrayLike(ABC):
             try:
                 item_arr = np.asarray(array, self.dtype, order="C")
             except ValueError as e:
-                if any(s in str(e) for s in ("invalid literal for ", "could not convert")):
+                if any(
+                    s in str(e) for s in ("invalid literal for ", "could not convert")
+                ):
                     bad_dtype = np.asarray(array).dtype
                     raise TypeError("No conversion path for dtype: " + repr(bad_dtype))
                 else:

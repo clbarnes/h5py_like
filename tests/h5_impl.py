@@ -69,14 +69,14 @@ class Dataset(DatasetBase):
 
     def __getitem__(self, args) -> np.ndarray:
         def fn(offset, shape):
-            slices = tuple(slice(o, o+s) for o, s in zip(offset, shape))
+            slices = tuple(slice(o, o + s) for o, s in zip(offset, shape))
             return self._impl[slices]
 
         return self._getitem(args, fn, self._astype)
 
     def __setitem__(self, args, val):
         def fn(offset, array):
-            slices = tuple(slice(o, o+s) for o, s in zip(offset, array.shape))
+            slices = tuple(slice(o, o + s) for o, s in zip(offset, array.shape))
             self._impl[slices] = array
 
         return self._setitem(args, val, fn)
@@ -122,10 +122,27 @@ class Group(GroupBase):
     def __setitem__(self, name, obj):
         self._impl[name] = obj._impl
 
-    def copy(self, source, dest, name=None, shallow=False, expand_soft=False, expand_external=False, expand_refs=False,
-             without_attrs=False):
-        self._impl.copy(source, dest, name=None, shallow=False, expand_soft=False, expand_external=False, expand_refs=False,
-             without_attrs=False)
+    def copy(
+        self,
+        source,
+        dest,
+        name=None,
+        shallow=False,
+        expand_soft=False,
+        expand_external=False,
+        expand_refs=False,
+        without_attrs=False,
+    ):
+        self._impl.copy(
+            source,
+            dest,
+            name=None,
+            shallow=False,
+            expand_soft=False,
+            expand_external=False,
+            expand_refs=False,
+            without_attrs=False,
+        )
 
     @property
     def attrs(self) -> "AttributeManagerBase":
