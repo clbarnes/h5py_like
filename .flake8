@@ -1,0 +1,9 @@
+[flake8]
+ignore =
+    # line length
+    E501
+
+paths =
+    h5py_like
+    tests
+    setup.py

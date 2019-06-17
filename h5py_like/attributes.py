@@ -61,5 +61,5 @@ class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
                 name,
                 value,
                 getattr(existing, "shape", None),
-                getattr(existing, "dtype", None)
+                getattr(existing, "dtype", None),
             )

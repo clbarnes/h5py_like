@@ -4,7 +4,12 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from h5py_like import Mode, FileMixin
-from h5py_like.test_utils import FileTestBase, DatasetTestBase, GroupTestBase, ModeTestBase
+from h5py_like.test_utils import (
+    FileTestBase,
+    DatasetTestBase,
+    GroupTestBase,
+    ModeTestBase,
+)
 from tests.h5_impl import File
 
 

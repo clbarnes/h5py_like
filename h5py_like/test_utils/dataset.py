@@ -39,7 +39,7 @@ class DatasetTestBase(ABC):
             np.index_exp[1:5],
             np.index_exp[..., 1:5],
             np.index_exp[..., 1:5, ...],
-        ]
+        ],
     )
     def test_slicing(self, slice_args, file_):
         data = random_state.random_sample((20, 20, 20))
@@ -64,6 +64,4 @@ class DatasetTestBase(ABC):
         if np_e or impl_e:
             assert isinstance(impl_e, type(np_e))
         else:
-            np.testing.assert_allclose(
-                impl, numpy
-            )
+            np.testing.assert_allclose(impl, numpy)

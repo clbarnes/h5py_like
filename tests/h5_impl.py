@@ -98,6 +98,7 @@ class Dataset(DatasetBase):
         def fn(offset, array):
             slices = tuple(slice(o, o + s) for o, s in zip(offset, array.shape))
             self._impl[slices] = array
+
         with process_oserror():
             return self._setitem(args, val, fn)
 

@@ -1,0 +1,23 @@
+language: python
+dist: xenial
+sudo: true
+python: 3.7
+notifications:
+  email: false
+cache: pip
+install:
+- make install-dev
+script:
+- make test
+- make lint
+deploy:
+  on:
+    branch: master
+    repo: clbarnes/h5py_like
+    python: 3.7
+    tags: true
+  distributions: sdist bdist_wheel
+  password:
+    secure: sDIxE83RZx1sARq7t9a91scIJdgm1QdWQLvClyDm7dV3XwoKrRpoGqGRI7A8Son/Y8mFPSAo0ZDx4jY7IdF8npxr7WWnH+JhY/hc9Lk0GQToI+uTwalvBFw3jPw7Xcgs7I9BAstn3tfegpSi3ZG6VfI7rRgqQjX2l2u6Jwz+Xad7kRPN9hz3A0W4EHT0Gg3NYM/jsAjec4yC9GdmfYcbfAX+6+AeIRlK0mw4RJr0t7YQ9v2RXpsD/28yl8QjiNscLIDCDCmhxwjT668w2Bo995hDOhoHRQMry7Aw+h8dROh+HK9bZjjAvPqc1VBQrlvm0x76Xz1IBb7s5I7qKcgL1DyYh81e2JoqQ70CRkEKged0YnWavxrhLELLwZIGV7O1ERfIlIxOm9Zxz9I6CMBUhYF8nz1GzHU7cVPxfAjqYdpcvR+wjtjCrdhmI+kp3gxbcw3iGOHL+DzX34QrFtz3hzimoFy2qr5a0lD90eK85Y2gzP7UXAtfEsherklU+SLmno8Pig1Y2JdtLcS+RAoCkyXlEbRQmb0cSMNgqwWlUkHNbgR18ZFBZ4BnAmV44ksJ8HKUIPCEtT37/dRb37lpbFXlQA2LlATVBi5N6nfKRqyBx2AS9ebQGlONnUcA9VzmjN4kflMZKdCETVz0YJutz5t7cXxRVinRR2RdQ91xa34=
+  provider: pypi
+  user: clbarnes
