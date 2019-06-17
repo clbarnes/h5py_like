@@ -215,12 +215,11 @@ class IndexableArrayLike(ABC):
         Use a given function to get data from an underlying dataset, and stride it with numpy if necessary.
 
         :param args: arguments as passed to __getitem__
-        :param indexer: Indexer for the dataset
         :param dtype: data type of the data (default whatever is returned by the internal function)
         :param read_fn: callable which takes offset and shape tuples of positive integers, and returns a numpy array
         :return: numpy array of the returned data with the requested dtype
         """
-        dtype = self.dtype if dtype is None else dtype
+        dtype = self.dtype if dtype is None else np.dtype(dtype)
         try:
             start, read_shape, stride, out_shape = self._indexer[args]
         except NullSlicingException as e:

@@ -98,7 +98,11 @@ class H5ObjectLike(WriteModeMixin, ABC):
 
     def _descend(self, other: str) -> Tuple[H5ObjectLike, List[str], Optional[str]]:
         """Descend from the most recent common ancestor with other path, through intermediate groups,
-        to last name (None if it's an ancestor)"""
+        to last name (None if it's an ancestor)
+
+        :param other:
+        :return: most recent common ancestor group,
+        """
         ancestor, relative_name = self._ancestor_and_relative_name(other)
         if not relative_name:
             return ancestor, [], relative_name

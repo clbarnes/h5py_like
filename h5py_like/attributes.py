@@ -4,7 +4,7 @@ from collections.abc import MutableMapping
 import numpy as np
 
 from .common import Mode
-from h5py_like.base import WriteModeMixin
+from h5py_like.base import WriteModeMixin, mutation
 
 
 class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
@@ -26,13 +26,13 @@ class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
     def __init__(self, mode: Mode = Mode.default()):
         self._mode = Mode.from_str(mode)
 
+    @mutation
     def create(self, name, data, shape=None, dtype=None):
         """ Set a new attribute, overwriting any existing attribute.
         The type and shape of the attribute are determined from the data.  To
         use a specific (numpy) type or shape, or to preserve the type of an attribute,
         use the methods create() and modify().
         """
-        self.raise_on_readonly()
         if dtype is None:
             dtype = getattr(data, "dtype", None)
         else:
@@ -45,6 +45,7 @@ class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
 
         self[name] = arr
 
+    @mutation
     def modify(self, name, value):
         """ Change the value of an attribute while preserving its (numpy) type.
         Differs from __setitem__ in that if the attribute already exists, its
@@ -52,9 +53,13 @@ class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
         externally generated files.
         If the attribute doesn't exist, it will be automatically created.
         """
-        self.raise_on_readonly()
         existing = self.get(name)
         if not existing:
             self.create(name, value)
         else:
-            self.create(name, value, existing.shape, existing.dtype)
+            self.create(
+                name,
+                value,
+                getattr(existing, "shape", None),
+                getattr(existing, "dtype", None)
+            )
