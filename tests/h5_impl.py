@@ -1,3 +1,5 @@
+import re
+from contextlib import contextmanager
 from typing import Iterator, Union, Tuple, Optional, Any
 
 import h5py
@@ -8,16 +10,32 @@ from h5py_like.base import H5ObjectLike
 from h5py_like.shape_utils import Indexer
 
 
+errno_re = re.compile(r"errno = (\d+),")
+
+
+@contextmanager
+def process_oserror():
+    try:
+        yield
+    except OSError as e:
+        match = errno_re.search(str(e))
+        if not match:
+            raise
+        raise OSError(int(match.groups()[0]), str(e))
+
+
 class AttributeManager(AttributeManagerBase):
     def __init__(self, parent, attrs: h5py.AttributeManager):
         self._impl = attrs
         super().__init__(parent.mode)
 
     def __setitem__(self, k, v) -> None:
-        self._impl[k] = v
+        with process_oserror():
+            self._impl[k] = v
 
     def __delitem__(self, v) -> None:
-        del self._impl[v]
+        with process_oserror():
+            del self._impl[v]
 
     def __getitem__(self, k):
         return self._impl[k]
@@ -62,10 +80,12 @@ class Dataset(DatasetBase):
 
     @property
     def chunks(self) -> Optional[Tuple[int, ...]]:
-        return self._impl.chunks
+        with process_oserror():
+            return self._impl.chunks
 
     def resize(self, size: Union[int, Tuple[int, ...]], axis: Optional[int] = None):
-        self._impl.resize(size)
+        with process_oserror():
+            self._impl.resize(size)
 
     def __getitem__(self, args) -> np.ndarray:
         def fn(offset, shape):
@@ -78,8 +98,8 @@ class Dataset(DatasetBase):
         def fn(offset, array):
             slices = tuple(slice(o, o + s) for o, s in zip(offset, array.shape))
             self._impl[slices] = array
-
-        return self._setitem(args, val, fn)
+        with process_oserror():
+            return self._setitem(args, val, fn)
 
     @property
     def attrs(self) -> "AttributeManagerBase":
@@ -96,11 +116,13 @@ class Dataset(DatasetBase):
 
 class Group(GroupBase):
     def _create_child_group(self, name) -> GroupBase:
-        gr = self._impl.create_group(name)
+        with process_oserror():
+            gr = self._impl.create_group(name)
         return Group(self, gr)
 
     def _create_child_dataset(self, name, shape=None, dtype=None, data=None, **kwds):
-        ds = self._impl.create_dataset(name, shape, dtype, data, **kwds)
+        with process_oserror():
+            ds = self._impl.create_dataset(name, shape, dtype, data, **kwds)
         return Dataset(self, ds)
 
     def _get_child(self, name) -> H5ObjectLike:
@@ -120,7 +142,8 @@ class Group(GroupBase):
         super().__init__(parent.mode)
 
     def __setitem__(self, name, obj):
-        self._impl[name] = obj._impl
+        with process_oserror():
+            self._impl[name] = obj._impl
 
     def copy(
         self,
@@ -133,16 +156,17 @@ class Group(GroupBase):
         expand_refs=False,
         without_attrs=False,
     ):
-        self._impl.copy(
-            source,
-            dest,
-            name=None,
-            shallow=False,
-            expand_soft=False,
-            expand_external=False,
-            expand_refs=False,
-            without_attrs=False,
-        )
+        with process_oserror():
+            self._impl.copy(
+                source,
+                dest,
+                name=None,
+                shallow=False,
+                expand_soft=False,
+                expand_external=False,
+                expand_refs=False,
+                without_attrs=False,
+            )
 
     @property
     def attrs(self) -> "AttributeManagerBase":
@@ -157,7 +181,8 @@ class Group(GroupBase):
         return self._parent
 
     def __delitem__(self, v) -> None:
-        del self._impl[v]
+        with process_oserror():
+            del self._impl[v]
 
     def __len__(self) -> int:
         return len(self._impl)
@@ -167,9 +192,10 @@ class Group(GroupBase):
 
 
 class File(FileMixin, Group):
-    def __init__(self, f: h5py.File):
-        super().__init__(f.name, mode=Mode.from_str(f.mode))
-        self._impl = f
+    def __init__(self, name, mode=Mode.default()):
+        super().__init__(name, mode)
+        with process_oserror():
+            self._impl = h5py.File(name, str(mode))
         self._attrs = AttributeManager(self, self._impl.attrs)
 
     def flush(self):
