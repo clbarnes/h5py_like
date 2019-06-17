@@ -13,9 +13,14 @@ random_state = np.random.RandomState(1991)
 class DatasetTestBase(ABC):
     dataset_kwargs = deepcopy(ds_kwargs)
 
-    def dataset(self, parent, **kwargs):
+    def dataset(self, parent, data=None, **kwargs):
         kwds = deepcopy(self.dataset_kwargs)
         kwds.update(kwargs)
+
+        if data is not None:
+            for key in ("shape", "dtype"):
+                del kwds[key]
+        kwds["data"] = data
 
         return parent.create_dataset(**kwds)
 
@@ -43,9 +48,6 @@ class DatasetTestBase(ABC):
     )
     def test_slicing(self, slice_args, file_):
         data = random_state.random_sample((20, 20, 20))
-        self.dataset_kwargs = deepcopy(self.dataset_kwargs)
-        for key in ("shape", "dtype"):
-            del self.dataset_kwargs[key]
         ds = self.dataset(file_, data=data)
 
         impl_e = None
@@ -65,3 +67,28 @@ class DatasetTestBase(ABC):
             assert isinstance(impl_e, type(np_e))
         else:
             np.testing.assert_allclose(impl, numpy)
+
+    def test_broadcast_scalar(self, file_):
+        ds = self.dataset(file_)
+        ds[:] = 5
+        expected = np.full_like(ds, 5)
+        np.testing.assert_allclose(ds, expected)
+
+    @pytest.mark.parametrize(
+        "slice_args,total",
+        [(np.index_exp[...], 10 ** 3), (np.index_exp[:5, :5, :5], 5 ** 3)],
+    )
+    def test_setitem_total(self, slice_args, total, file_):
+        ds = self.dataset(file_)
+        ds[slice_args] = 1
+        assert ds[:].sum() == total
+
+    def test_setitem(self, file_):
+        data = np.array([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
+
+        ds = self.dataset(file_, data=data, chunks=(3, 1))
+        ds[:2, :2] = np.array([[5, 6], [7, 8]], dtype=data.dtype)
+
+        np.testing.assert_allclose(
+            ds[:], np.array([[5, 6, 3], [7, 8, 3], [1, 2, 3]], dtype=data.dtype)
+        )

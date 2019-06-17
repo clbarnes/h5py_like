@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 
 import pytest
 
@@ -27,11 +26,8 @@ class FileTestBase(GroupLikeTestsMixin, ABC):
 
 class ModeTestBase(ABC):
     @abstractmethod
-    @contextmanager
     def factory(self, mode: Mode) -> FileMixin:
-        """Create a File at a location deterministic per test, as a context manager.
-
-        Do not clean up the File in this method.
+        """Create a File at a location deterministic per test.
         """
         pass
 
@@ -39,7 +35,7 @@ class ModeTestBase(ABC):
         try:
             with self.factory(Mode.READ_WRITE_CREATE) as f:
                 if group is not None:
-                    g = f.create_group(group)
+                    f.create_group(group)
         except FileExistsError:
             pass
 
@@ -49,14 +45,13 @@ class ModeTestBase(ABC):
         with self.factory(mode) as f:
             f.create_group("group")
 
-        with self.factory(mode) as f:
-            assert "group" in f
+        with self.factory(mode) as f2:
+            assert "group" in f2
 
     def test_create(self):
         mode = Mode.CREATE
 
-        with self.factory(mode):
-            pass
+        self.factory(mode)
 
         with pytest.raises(FileExistsError):
             with self.factory(mode):
@@ -65,20 +60,18 @@ class ModeTestBase(ABC):
     def test_read_only(self):
         mode = Mode.READ_ONLY
         with pytest.raises(FileNotFoundError):
-            with self.factory(mode):
-                pass
+            self.factory(mode)
 
         self.ensure_exists()
 
         with self.factory(mode) as f:
             with pytest.raises(ReadOnlyException):
-                g = f.create_group("group")
+                f.create_group("group")
 
     def test_create_truncate(self):
         mode = Mode.CREATE_TRUNCATE
 
-        with self.factory(mode):
-            pass
+        self.factory(mode)
 
         self.ensure_exists("group")
 
@@ -89,10 +82,9 @@ class ModeTestBase(ABC):
         mode = Mode.READ_WRITE
 
         with pytest.raises(FileNotFoundError):
-            with self.factory(mode):
-                pass
+            self.factory(mode)
 
         self.ensure_exists()
 
         with self.factory(mode) as f:
-            g = f.create_group("group")
+            f.create_group("group")

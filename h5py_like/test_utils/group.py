@@ -7,6 +7,9 @@ from h5py_like import GroupBase, Name
 from .common import check_attrs_rw, ds_kwargs
 
 
+random_state = np.random.RandomState(2019)
+
+
 class GroupLikeTestsMixin(ABC):
     dataset_kwargs = deepcopy(ds_kwargs)
 
@@ -54,4 +57,4 @@ class GroupTestBase(GroupLikeTestsMixin, ABC):
         super().test_create_dataset(self.group(file_))
 
     def test_create_dataset_from_data(self, file_: GroupBase):
-        super().test_create_dataset(self.group(file_))
+        super().test_create_dataset_from_data(self.group(file_))

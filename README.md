@@ -84,7 +84,7 @@ def file_():
 test_implementation.py
 
 ```python
-from h5py_like.test_utils import FileTestBase, GroupTestBase, DatasetTestBase
+from h5py_like.test_utils import FileTestBase, GroupTestBase, DatasetTestBase, ModeTestBase
 
 # concrete class names must start with Test
 
@@ -96,6 +96,11 @@ class TestGroup(GroupTestBase):
 
 class TestDataset(DatasetTestBase):
     pass
+    
+class TestMode(ModeTestBase):
+    def factory(self, mode):
+        # Instantiate your File object in the given mode in a way which is repeatable within a method.
+        return MyFile(mode)
 
 ```
 

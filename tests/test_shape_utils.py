@@ -42,7 +42,7 @@ def test_int_to_start_len_stride(idx, expected):
 
 
 @pytest.mark.parametrize("idx", [LEN + 1, -LEN - 1])
-def test_int_to_start_len_stride(idx):
+def test_int_to_start_len_stride_fails(idx):
     with pytest.raises(IndexError):
         int_to_start_len_stride(idx, LEN)
 

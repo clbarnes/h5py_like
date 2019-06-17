@@ -35,7 +35,7 @@ class H5ObjectLike(WriteModeMixin, ABC):
 
     @property
     @abstractmethod
-    def attrs(self) -> "AttributeManagerBase":
+    def attrs(self) -> "AttributeManagerBase":  # noqa
         pass
 
     @property
@@ -44,7 +44,7 @@ class H5ObjectLike(WriteModeMixin, ABC):
         pass
 
     @property
-    def file(self) -> "FileMixin":
+    def file(self) -> "FileMixin":  # noqa
         p = self
         for p in self._ancestors():
             pass
