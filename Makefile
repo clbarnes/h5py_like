@@ -28,10 +28,10 @@ lint:
 	flake8
 
 patch:
-	bash scripts/bump_version.sh patch
+	bumpversion patch
 
 minor:
-	bash scripts/bump_version.sh minor
+	bumpversion minor
 
 major:
-	bash scripts/bump_version.sh major
+	bumpversion major
