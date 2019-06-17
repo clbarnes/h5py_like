@@ -1,3 +1,10 @@
-numpy
-pytest
-h5py
+numpy==1.16.2
+pytest==4.6.3
+h5py==2.9.0
+setuptools==41.0.1
+wheel==0.33.4
+twine==1.13.0
+pre-commit==1.17.0
+flake8==3.7.7
+bump2version==0.5.10
+black==19.3b0
