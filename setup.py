@@ -27,6 +27,6 @@ setup(
     name="h5py_like",
     packages=find_packages(exclude=["tests"]),
     url="https://github.com/barnesc/h5py_like",
-    version="0.2.2",
+    version="0.3.0",
     zip_safe=False,
 )
