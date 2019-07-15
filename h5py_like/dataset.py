@@ -150,9 +150,9 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
     def __getitem__(self, args) -> np.ndarray:
         """Read a slice from the HDF5-like dataset.
 
-        See h5py_like.shape_utils.getitem for a utility function which supports positive and negative
-        integers/slices, striding, ellipses (explicit and implicit), reading scalars,
-        and reading arrays with 0-length dimensions.
+        See h5py_like.shape_utils.getitem for a utility function which supports
+        positive and negative integers/slices, striding, ellipses (explicit and
+        implicit), reading scalars, and reading arrays with 0-length dimensions.
 
         Don't forget to use ``self._astype or self.dtype`` when setting the read dtype,
         to be compatible with the ``Dataset.astype`` context manager.
@@ -172,7 +172,8 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         The destination array must be C-contiguous and writable.
         Selections must be the output of numpy.s_[<args>].
 
-        The default implementation just reads and writes as usual, and therefore has no speedups.
+        The default implementation just reads and writes as usual, and therefore has no
+        speedups.
         """
         if source_sel is None:
             source_sel = Ellipsis
@@ -188,7 +189,8 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         The source array must be C-contiguous.  Selections must be
         the output of numpy.s_[<args>].
 
-        The default implementation just reads and writes as usual, and therefore has no speedups.
+        The default implementation just reads and writes as usual, and therefore has no
+        speedups.
         """
         if source_sel is None:
             source_sel = Ellipsis
@@ -209,7 +211,10 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         return arr
 
     def __str__(self):
-        return f"<{classname(self)}(name='{self.name}', shape={self.shape}, dtype={self.dtype}, file={self.file})>"
+        return (
+            f"<{classname(self)}(name='{self.name}', "
+            f"shape={self.shape}, dtype={self.dtype}, file={self.file})>"
+        )
 
     def __eq__(self, other):
         return all(

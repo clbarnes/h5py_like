@@ -68,7 +68,7 @@ class H5ObjectLike(WriteModeMixin, ABC):
         yield ancestor
 
     def _absolute_name(self, other: str) -> str:
-        """Get the hypothetical absolute name of the object at the given absolute or relative name"""
+        """Get the absolute name of the object at the given absolute or relative name"""
         name = Name(self.name)
         return str(name.joinpath(other))
 
@@ -97,11 +97,11 @@ class H5ObjectLike(WriteModeMixin, ABC):
         raise RuntimeError(f"Name '{other}' is not relative to root file")
 
     def _descend(self, other: str) -> Tuple[H5ObjectLike, List[str], Optional[str]]:
-        """Descend from the most recent common ancestor with other path, through intermediate groups,
-        to last name (None if it's an ancestor)
+        """Get most recent common ancestor and intermediate names to other.
 
         :param other:
-        :return: most recent common ancestor group,
+        :return: most recent common ancestor group, list of intermediate names,
+            name of other (or None)
         """
         ancestor, relative_name = self._ancestor_and_relative_name(other)
         if not relative_name:

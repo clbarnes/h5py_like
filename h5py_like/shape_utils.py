@@ -27,12 +27,14 @@ class StartLenStride(NamedTuple):
 
 def slice_to_start_len_stride(slice_: slice, max_len: int) -> StartLenStride:
     """
-    Convert a slice object, possibly with None or negative members, into positive integers for start, length, and stride.
+    Convert a slice object, possibly with None or negative members, into positive
+    integers for start, length, and stride.
 
-    Raises NullSlicingException if there would be no results returned from this indexing.
+    Raises NullSlicingException if there would be no results returned from this
+    indexing.
 
-    If stride is negative, start is still the lower corner and length is still positive: the negative stride
-    must be done after the data read.
+    If stride is negative, start is still the lower corner and length is still positive:
+    the negative stride must be done after the data read.
 
     :param slice_:
     :param max_len: maximum length of the dimension
@@ -53,7 +55,8 @@ def slice_to_start_len_stride(slice_: slice, max_len: int) -> StartLenStride:
 
 def int_to_start_len_stride(i: int, max_len: int) -> StartLenStride:
     """
-    Convert an integer index, possibly negative, into positive integers for start, length, and stride.
+    Convert an integer index, possibly negative, into positive integers for start,
+    length, and stride.
 
     Raises NullSlicingException if there would be no results returned from this indexing
 
@@ -212,11 +215,14 @@ class IndexableArrayLike(ABC):
         dtype: np.dtype = None,
     ) -> np.ndarray:
         """
-        Use a given function to get data from an underlying dataset, and stride it with numpy if necessary.
+        Use a given function to get data from an underlying dataset, and stride it with
+        numpy if necessary.
 
         :param args: arguments as passed to __getitem__
-        :param dtype: data type of the data (default whatever is returned by the internal function)
-        :param read_fn: callable which takes offset and shape tuples of positive integers, and returns a numpy array
+        :param dtype: data type of the data (default whatever is returned by the
+            internal function)
+        :param read_fn: callable which takes offset and shape tuples of positive
+            integers, and returns a numpy array
         :return: numpy array of the returned data with the requested dtype
         """
         dtype = self.dtype if dtype is None else np.dtype(dtype)
@@ -252,7 +258,8 @@ class IndexableArrayLike(ABC):
         :param array: array-like data to write
         :param indexer: Indexer for the dataset
         :param dtype: data type to write
-        :param write_fn: function which takes an offset as a tuple of integers, and a numpy array, and writes to an underlying dataset
+        :param write_fn: function which takes an offset as a tuple of integers, and a
+            numpy array, and writes to an underlying dataset
         """
         try:
             start, host_shape, stride, _ = self._indexer[args]
@@ -278,7 +285,8 @@ class IndexableArrayLike(ABC):
             except TypeError as e:
                 if "argument must be" in str(e):
                     raise OSError(
-                        "Can't prepare for writing data (no appropriate function for conversion path)"
+                        "Can't prepare for writing data "
+                        "(no appropriate function for conversion path)"
                     )
                 else:
                     raise
@@ -298,13 +306,15 @@ def threaded_block_read(
     threads=DEFAULT_THREADS,
 ) -> np.ndarray:
     """
-    For a blocked dataset, read complete blocks using python threads and then stitch and stride it in numpy.
+    For a blocked dataset, read complete blocks using python threads and then stitch and
+    stride it in numpy.
 
     :param start: offset from 0 corner
     :param shape: unstrided shape of block to be read
     :param stride: strides
     :param chunks: block shape inside the dataset
-    :param read_fn: function which takes a block index as a tuple of ints and returns a numpy array
+    :param read_fn: function which takes a block index as a tuple of ints and returns a
+        numpy array
     :param threads: number of threads to use
     :return: numpy array
     """
