@@ -3,8 +3,7 @@ from __future__ import annotations
 import itertools
 import numbers
 from abc import ABC, abstractmethod
-from concurrent.futures import as_completed
-from concurrent.futures.thread import ThreadPoolExecutor
+import multiprocessing as mp
 from math import ceil
 from typing import Callable, Tuple, TypeVar, Union, NamedTuple, List
 
@@ -391,17 +390,25 @@ def threaded_block_read(
 
     block_blocks_shape: np.ndarray = stop_block_idx - start_block_idx
 
+    idx_iter1, idx_iter2 = itertools.tee(
+        itertools.product(*(range(i) for i in block_blocks_shape))
+    )
     blocks = np.empty(shape=block_blocks_shape, dtype=object)
 
-    with ThreadPoolExecutor(max_workers=threads) as exe:
-        futures = dict()
-        for idx in itertools.product(*(range(i) for i in block_blocks_shape)):
-            fut = exe.submit(read_fn, start_block_idx + idx)
-            futures[fut] = idx
+    n_blocks = blocks.size
+    threads = min(threads, n_blocks)
 
-        for fut in as_completed(futures):
-            idx = futures[fut]
-            blocks[idx] = fut.result()
+    # probably faster than threadpoolexecutor
+    with mp.pool.ThreadPool(threads) as pool:
+        for block_idx, block in zip(
+            idx_iter1,
+            pool.imap(
+                read_fn,
+                (start_block_idx + idx for idx in idx_iter2),
+                chunksize=n_blocks // threads,
+            ),
+        ):
+            blocks[block_idx] = block
 
     big_arr = np.block(blocks.tolist())
     return big_arr[
