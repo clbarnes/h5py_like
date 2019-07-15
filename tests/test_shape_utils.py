@@ -7,6 +7,8 @@ from h5py_like.shape_utils import (
     slice_to_start_len_stride,
     int_to_start_len_stride,
     Indexer,
+    guess_chunks,
+    CHUNK_MAX,
 )
 
 LEN = 10
@@ -122,3 +124,37 @@ def test_indexer_stride():
     assert test == Roi(
         start=(0, 0, 0), read_shape=SHAPE, stride=(5, -5, 1), out_shape=(2, 4, 30)
     )
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        (100,),
+        (100, 100),
+        (1000000,),
+        (1000000000,),
+        (10000000000000000000000,),
+        (10000, 10000),
+        (10000000, 1000),
+        (1000, 10000000),
+        (10000000, 1000, 2),
+        (1000, 10000000, 2),
+        (10000, 10000, 10000),
+        (100000, 100000, 100000),
+        (1000000000, 1000000000, 1000000000),
+        (0,),
+        (0, 0),
+        (10, 0),
+        (0, 10),
+        (1, 2, 0, 4, 5),
+    ],
+    ids=str,
+)
+@pytest.mark.parametrize("typesize", [1, 2, 4, 8])
+def test_guess_chunks(shape, typesize):
+    chunks = guess_chunks(shape, typesize)
+    assert isinstance(chunks, tuple)
+    assert len(chunks) == len(shape)
+    assert all([0 < c <= max(s, 1) for c, s in zip(chunks, shape)])
+    bytes_per_chunk = typesize * np.product(chunks)
+    assert bytes_per_chunk < CHUNK_MAX
