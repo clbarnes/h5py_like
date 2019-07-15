@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import numbers
 from abc import ABC, abstractmethod
-import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
 from math import ceil
 from typing import Callable, Tuple, TypeVar, Union, NamedTuple, List
 
@@ -361,8 +361,8 @@ def threaded_block_read(
     threads=DEFAULT_THREADS,
 ) -> np.ndarray:
     """
-    For a blocked dataset, read complete blocks using python threads and then stitch and
-    stride it in numpy.
+    For a blocked dataset with block-aligned extends, read complete blocks using python
+    threads and then stitch and stride it in numpy.
 
     :param start: offset from 0 corner
     :param shape: unstrided shape of block to be read
@@ -373,7 +373,6 @@ def threaded_block_read(
     :param threads: number of threads to use
     :return: numpy array
     """
-    # todo: check for off-by-one
     start = np.asarray(start, dtype=int)
     shape = np.asarray(shape, dtype=int)
     chunks = np.asarray(chunks, dtype=int)
@@ -383,10 +382,23 @@ def threaded_block_read(
     start_block_idx, start_internal_offset = divmod(start, chunks)
 
     # todo: handle ragged edges
-    stop_block_idx, stop_internal_offset = divmod(end, chunks)
-    if np.count_nonzero(stop_internal_offset):
-        stop_block_idx += 1
-        stop_internal_offset -= chunks
+    stop_block_idx_guess, stop_internal_offset_guess = divmod(end, chunks)
+
+    stop_block_idx = []
+    stop_internal_offset = []
+    for stop_block_idx_d, stop_internal_offset_d, c in zip(
+        stop_block_idx_guess, stop_internal_offset_guess, chunks
+    ):
+        if stop_internal_offset_d:
+            stop_block_idx_d += 1
+            stop_internal_offset_d -= c
+        else:
+            stop_internal_offset_d = None
+
+        stop_block_idx.append(stop_block_idx_d)
+        stop_internal_offset.append(stop_internal_offset_d)
+
+    stop_block_idx = np.asarray(stop_block_idx, dtype=int)
 
     block_blocks_shape: np.ndarray = stop_block_idx - start_block_idx
 
@@ -399,7 +411,7 @@ def threaded_block_read(
     threads = min(threads, n_blocks)
 
     # probably faster than threadpoolexecutor
-    with mp.pool.ThreadPool(threads) as pool:
+    with ThreadPool(threads) as pool:
         for block_idx, block in zip(
             idx_iter1,
             pool.imap(
