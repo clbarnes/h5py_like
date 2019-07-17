@@ -8,3 +8,4 @@ pre-commit==1.17.0
 flake8==3.7.8
 bump2version==0.5.10
 black==19.3b0
+tox==3.13.2
