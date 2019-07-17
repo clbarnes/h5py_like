@@ -1,4 +1,3 @@
-from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -14,7 +13,7 @@ class FileMixin(ABC):
         self._mode: Mode = Mode.from_str(mode)
 
     @property
-    def parent(self) -> FileMixin:
+    def parent(self) -> "FileMixin":
         return self
 
     def __enter__(self):

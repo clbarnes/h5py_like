@@ -1,4 +1,3 @@
-from __future__ import annotations
 from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Tuple, List, Iterator, Optional
@@ -59,7 +58,7 @@ class H5ObjectLike(WriteModeMixin, ABC):
     def mode(self):
         return self.parent.mode
 
-    def _ancestors(self) -> Iterator[H5ObjectLike]:
+    def _ancestors(self) -> Iterator["H5ObjectLike"]:
         """Iterate through ancestors (including this object) until the root"""
         ancestor = self
         while not ancestor._is_file:
@@ -84,7 +83,7 @@ class H5ObjectLike(WriteModeMixin, ABC):
 
     def _ancestor_and_relative_name(
         self, other: str
-    ) -> Tuple[H5ObjectLike, Optional[str]]:
+    ) -> Tuple["H5ObjectLike", Optional[str]]:
         """Get the most recent common ancestor with the other name,
         and the relative path from that ancestor to the other name"""
         for ancestor in self._ancestors():
@@ -96,7 +95,7 @@ class H5ObjectLike(WriteModeMixin, ABC):
 
         raise RuntimeError(f"Name '{other}' is not relative to root file")
 
-    def _descend(self, other: str) -> Tuple[H5ObjectLike, List[str], Optional[str]]:
+    def _descend(self, other: str) -> Tuple["H5ObjectLike", List[str], Optional[str]]:
         """Get most recent common ancestor and intermediate names to other.
 
         :param other:

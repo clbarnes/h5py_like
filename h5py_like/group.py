@@ -1,9 +1,8 @@
-from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections.abc import Callable, MutableMapping
+from collections.abc import MutableMapping
 
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from .base import H5ObjectLike, mutation
 from .dataset import DatasetBase
@@ -17,7 +16,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
     _is_file = False
 
     @abstractmethod
-    def _create_child_group(self, name) -> GroupBase:
+    def _create_child_group(self, name) -> "GroupBase":
         """Create a group which is a direct child of this object with the given name.
 
         Should raise a TypeError if a dataset exists there,
@@ -37,7 +36,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         return this
 
     @mutation
-    def create_group(self, name) -> GroupBase:
+    def create_group(self, name) -> "GroupBase":
         """ Create and return a new subgroup.
         Name may be absolute or relative.  Fails if the target name already
         exists.
@@ -144,7 +143,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
 
         return self.create_dataset(name, **kwupdate)
 
-    def require_group(self, name) -> GroupBase:
+    def require_group(self, name) -> "GroupBase":
         """Return a group, creating it if it doesn't exist.
         TypeError is raised if something with that name already exists that
         isn't a group.

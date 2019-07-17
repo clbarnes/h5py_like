@@ -1,15 +1,17 @@
 language: python
 dist: xenial
 sudo: true
-python: 3.7
+python:
+  - 3.7
+  - 3.6
 notifications:
   email: false
 cache: pip
 install:
-- make install-dev
+  - pip install tox-travis
 script:
-- make test
-- make lint
+  - tox
+  - make lint
 deploy:
   on:
     branch: master
