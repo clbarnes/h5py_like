@@ -8,7 +8,7 @@ notifications:
   email: false
 cache: pip
 install:
-  - pip install tox-travis
+  - pip install tox-travis black flake8
 script:
   - tox
   - make lint
