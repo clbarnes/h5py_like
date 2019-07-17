@@ -3,7 +3,7 @@ import numbers
 from abc import ABC, abstractmethod
 from multiprocessing.pool import ThreadPool
 from math import ceil
-from typing import Callable, Tuple, TypeVar, Union, NamedTuple, List
+from typing import Callable, Tuple, TypeVar, Union, NamedTuple, List, Iterator
 
 import numpy as np
 
@@ -215,6 +215,9 @@ class IndexableArrayLike(ABC):
         Use a given function to get data from an underlying dataset, and stride it with
         numpy if necessary.
 
+        The given function could handle threading; ``thread_read_fn`` is a helper for
+        this.
+
         :param args: arguments as passed to __getitem__
         :param dtype: data type of the data (default whatever is returned by the
             internal function)
@@ -251,10 +254,11 @@ class IndexableArrayLike(ABC):
         Use a given function to insert data into an underlying dataset.
         Does not support striding, or broadcasting other than scalar.
 
+        The given function could handle threading; ``thread_write_fn`` is a helper for
+        this.
+
         :param args: index arguments as passed to __setitem__
         :param array: array-like data to write
-        :param indexer: Indexer for the dataset
-        :param dtype: data type to write
         :param write_fn: function which takes an offset as a tuple of integers, and a
             numpy array, and writes to an underlying dataset
         """
@@ -348,6 +352,137 @@ def guess_chunks(shape, typesize):
         idx += 1
 
     return tuple(int(x) for x in chunks)
+
+
+def to_slice(start: Tuple[int, ...], shape: Tuple[int, ...]):
+    """Convert start and shape tuple to slice object"""
+    return tuple(slice(st, st + sh) for st, sh in zip(start, shape))
+
+
+def chunk_roi(
+    start: Tuple[int, ...],
+    shape: Tuple[int, ...],
+    chunks: Tuple[int, ...],
+    global_shape: Tuple[int, ...],
+) -> Iterator[Tuple[Tuple[int, ...], Tuple[int, ...]]]:
+    """Decompose a large ROI into chunks.
+
+    Yields a (start, shape) pair of tuples for each subregion.
+    Given the chunking scheme ``chunks``, each subregion is constrained to a single
+    block, and there is only a single subregion per block.
+    Subregions may be smaller than a block if the input ``start``, ``shape`` pair is not
+    block-aligned.
+
+    :param start: of the ROI
+    :param shape: of the ROI
+    :param chunks: chunking scheme of the array which will be indexed into
+    :param global_shape: shape of the array which will be indexed into
+    :return: start, shape pairs for each subregion
+    """
+    chunks = np.asarray(chunks, dtype=int)
+
+    start = np.asarray(start, dtype=int)
+    shape = np.asarray(shape, dtype=int)
+    stop = start + shape
+
+    start_block_idx, start_block_offset = divmod(start, chunks)
+
+    last_block_idx, last_block_offset = divmod(stop, chunks)
+    last_block_idx[last_block_offset == 0] -= 1
+    last_block_offset[last_block_offset == 0] = chunks[last_block_offset == 0]
+
+    internal_block_idxs = last_block_idx - start_block_idx
+
+    for internal_block_idx in itertools.product(
+        *(range(d) for d in internal_block_idxs + 1)
+    ):
+        internal_block_idx = np.asarray(internal_block_idx, dtype=int)
+        global_block_idx = start_block_idx + internal_block_idx
+
+        s_b_offset = start_block_offset * (internal_block_idx == 0)
+        l_b_offset = chunks.copy()
+
+        l_b_offset[global_block_idx == last_block_idx] = last_block_offset[
+            global_block_idx == last_block_idx
+        ]
+
+        global_block_start_coords = global_block_idx * chunks
+        start_coords = global_block_start_coords + s_b_offset
+
+        stop_coords = tuple(
+            min(gbsc + lbo, gs) - sc
+            for gbsc, lbo, gs, sc in zip(
+                global_block_start_coords, l_b_offset, global_shape, start_coords
+            )
+        )
+
+        yield tuple(start_coords), stop_coords
+
+
+def thread_read_fn(
+    start: Tuple[int, ...],
+    shape: Tuple[int, ...],
+    chunks: Tuple[int, ...],
+    global_shape: Tuple[int, ...],
+    read_fn: Callable[[Tuple[int, ...], Tuple[int, ...]], np.ndarray],
+    threads: int = DEFAULT_THREADS,
+):
+    """For chunked datasets, split reading across threads.
+
+    :param start:
+    :param shape:
+    :param chunks: chunking scheme of array to be read
+    :param global_shape: shape of the array to be read
+    :param read_fn: function which takes a ``start`` and ``shape`` tuple,
+        and returns an array
+    :param threads:
+    :return:
+    """
+    source_coords_list = list(chunk_roi(start, shape, chunks, global_shape))
+
+    with ThreadPool(min(threads, len(source_coords_list))) as pool:
+        results = pool.starmap(
+            read_fn, source_coords_list, chunksize=len(source_coords_list) // threads
+        )
+
+    arr = np.empty(shape, dtype=results[0].dtype)
+
+    for result, (start_coords, block_shape) in zip(results, source_coords_list):
+        slicing = to_slice(np.array(start_coords) - start, block_shape)
+        arr[slicing] = result
+
+    return arr
+
+
+def thread_write_fn(
+    start: Tuple[int, ...],
+    arr: np.ndarray,
+    chunks: Tuple[int, ...],
+    global_shape: Tuple[int, ...],
+    write_fn: Callable[[Tuple[int, ...], np.ndarray], None],
+    threads=DEFAULT_THREADS,
+):
+    """
+
+    :param start:
+    :param arr: array to write to the ROI
+    :param chunks: chunking scheme of array to be written to
+    :param global_shape: shape of array to be written to
+    :param write_fn: function which takes a ``start`` tuple and a np.ndarray
+    :param threads:
+    :return:
+    """
+    tgt_coords_list = list(chunk_roi(start, arr.shape, chunks, global_shape))
+
+    with ThreadPool(min(threads, len(tgt_coords_list))) as pool:
+        pool.starmap(
+            write_fn,
+            (
+                [st, arr[to_slice(st, sh)]]
+                for st, sh in chunk_roi(start, arr.shape, chunks, global_shape)
+            ),
+            chunksize=len(tgt_coords_list) // threads,
+        )
 
 
 def threaded_block_read(

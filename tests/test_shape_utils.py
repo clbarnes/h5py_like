@@ -10,6 +10,8 @@ from h5py_like.shape_utils import (
     guess_chunks,
     CHUNK_MAX,
     threaded_block_read,
+    chunk_roi,
+    thread_read_fn,
 )
 
 LEN = 10
@@ -183,3 +185,80 @@ def test_threaded_read(threads, shape):
 
     out = threaded_block_read((0, 0, 0), data.shape, (1, 1, 1), chunks, fn, threads)
     assert np.allclose(data, out)
+
+
+def idfn(val):
+    if isinstance(val, tuple):
+        return str(val)
+    elif isinstance(val, set):
+        return ""
+
+
+@pytest.mark.parametrize(
+    ["start", "shape", "expected"],
+    [
+        [(0, 0), (10, 10), {((0, 0), (10, 10))}],  # simple
+        [(0, 0), (8, 8), {((0, 0), (8, 8))}],  # high offset
+        [(2, 2), (8, 8), {((2, 2), (8, 8))}],  # low offset
+        [
+            (0, 0),
+            (20, 20),
+            {
+                ((0, 0), (10, 10)),
+                ((10, 0), (10, 10)),
+                ((0, 10), (10, 10)),
+                ((10, 10), (10, 10)),
+            },
+        ],  # multi-chunk
+        [
+            (5, 5),
+            (20, 20),
+            {
+                ((5, 5), (5, 5)),
+                ((5, 10), (5, 10)),
+                ((5, 20), (5, 5)),
+                ((10, 5), (10, 5)),
+                ((10, 10), (10, 10)),
+                ((10, 20), (10, 5)),
+                ((20, 5), (5, 5)),
+                ((20, 10), (5, 10)),
+                ((20, 20), (5, 5)),
+            },
+        ],  # complicated multi-chunk
+    ],
+    ids=idfn,
+)
+def test_chunk_roi(start, shape, expected):
+    chunks = (10, 10)
+
+    chunk_coords_set = set(chunk_roi(start, shape, chunks, (30, 30)))
+
+    assert chunk_coords_set == expected
+
+
+@pytest.mark.parametrize(
+    ["start", "shape"],
+    [
+        [(0, 0), (10, 10)],  # simple
+        [(0, 0), (8, 8)],  # high offset
+        [(2, 2), (8, 8)],  # low offset
+        [(0, 0), (20, 20)],  # multi-chunk
+        [(5, 5), (20, 20)],  # complicated multi-chunk
+    ],
+    ids=str,
+)
+def test_thread_read_fn(start, shape):
+    random = np.random.RandomState(1991)
+    data = random.random_sample((30, 30))
+
+    chunks = (10, 10)
+
+    def fn(start_coord, block_shape):
+        stop_coord = np.array(start_coord) + block_shape
+        slicing = tuple(slice(sta, sto) for sta, sto in zip(start_coord, stop_coord))
+        return data[slicing]
+
+    out = thread_read_fn(start, shape, chunks, data.shape, fn, threads=1)
+    slicing = tuple(slice(sta, sto) for sta, sto in zip(start, np.array(start) + shape))
+    expected = data[slicing]
+    assert np.allclose(expected, out)
