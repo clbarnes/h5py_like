@@ -4,6 +4,9 @@ PY_SRC=$(PKG) tests setup.py
 test:
 	pytest -v
 
+test-all:
+	tox
+
 install:
 	pip install -U .
 
@@ -12,7 +15,7 @@ install-dev:
 
 clean:
 	rm -f **/*.hdf5 **/*.h5 **/*.hdf **/*.pyc
-	rm -rf $(PKG).egg-info/ build/ dist/ **/__pycache__/ .pytest_cache/
+	rm -rf $(PKG).egg-info/ build/ dist/ **/__pycache__/ .pytest_cache/ .tox/
 
 dist: clean lint
 	python setup.py sdist bdist_wheel
