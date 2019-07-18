@@ -61,6 +61,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         self, name, shape=None, dtype=None, data=None, **kwds
     ) -> DatasetBase:
         """ Create a new HDF5-like dataset
+
         name
             Name of the dataset (absolute or relative).
         shape
@@ -73,7 +74,11 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         data
             Provide data to initialize the dataset.  If used, you can omit
             shape and dtype arguments.
-        Keyword-only arguments:
+
+        If the dataset implementation supports chunking:
+
+        chunks
+            tuple describing the shape of the chunks
         """
         ancestor, group_names, last_name = self._descend(name)
         parent = ancestor._require_descendant_groups(*group_names)

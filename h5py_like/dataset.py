@@ -11,10 +11,13 @@ from h5py_like.base import H5ObjectLike, mutation
 
 
 class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
-    """
-        Represents an HDF5-like dataset
+    """Represents an HDF5-like dataset
+
+    If the dataset implementation supports threaded reads and writes, the number of
+    threads should be controlled by the ``threads`` attribute.
     """
 
+    threads = None
     _is_file = False
 
     def __init__(self, mode: Mode = Mode.default()):
