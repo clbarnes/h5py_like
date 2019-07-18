@@ -4,6 +4,7 @@ import pytest
 
 from h5py_like import Mode, FileMixin
 from h5py_like.common import ReadOnlyException
+from h5py_like.test_utils.common import LoggedClassMixin
 from .group import GroupLikeTestsMixin
 
 
@@ -24,7 +25,7 @@ class FileTestBase(GroupLikeTestsMixin, ABC):
         super().test_create_dataset_from_data(file_)
 
 
-class ModeTestBase(ABC):
+class ModeTestBase(LoggedClassMixin, ABC):
     @abstractmethod
     def factory(self, mode: Mode) -> FileMixin:
         """Create a File at a location deterministic per test.

@@ -104,6 +104,8 @@ class TestMode(ModeTestBase):
 
 ```
 
+If your dataset implementation supports chunking and threading, use the `ThreadedDatasetTestBase` base class instead.
+
 The provided base classes test some of the expected functionality, even if you don't write any methods in your test classes.
 You can add more tests if you like, or override those you want to change, or decorate any you to skip or xfail.
 

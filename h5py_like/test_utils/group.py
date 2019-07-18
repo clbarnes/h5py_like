@@ -4,13 +4,12 @@ from copy import deepcopy
 import numpy as np
 
 from h5py_like import GroupBase, Name
-from .common import check_attrs_rw, ds_kwargs
-
+from .common import check_attrs_rw, ds_kwargs, LoggedClassMixin
 
 random_state = np.random.RandomState(2019)
 
 
-class GroupLikeTestsMixin(ABC):
+class GroupLikeTestsMixin(LoggedClassMixin, ABC):
     dataset_kwargs = deepcopy(ds_kwargs)
 
     def test_attrs(self, obj: GroupBase):
