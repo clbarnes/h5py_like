@@ -12,6 +12,7 @@ from h5py_like.shape_utils import (
     chunk_roi,
     thread_read_fn,
     to_slice,
+    thread_write_fn,
 )
 
 LEN = 10
@@ -246,3 +247,33 @@ def test_thread_read_fn(start, shape):
     slicing = to_slice(start, shape)
     expected = data[slicing]
     assert np.allclose(expected, out)
+
+
+@pytest.mark.parametrize(
+    ["start", "shape"],
+    [
+        [(0, 0), (10, 10)],  # simple
+        [(0, 0), (8, 8)],  # high offset
+        [(2, 2), (8, 8)],  # low offset
+        [(0, 0), (20, 20)],  # multi-chunk
+        [(5, 5), (20, 20)],  # complicated multi-chunk
+    ],
+    ids=str,
+)
+def test_thread_write_fn(start, shape):
+    random = np.random.RandomState(1991)
+    data = random.random_sample((30, 30))
+
+    chunks = (10, 10)
+
+    def fn(start_coord, arr):
+        slicing = to_slice(start_coord, arr.shape)
+        data[slicing] = arr
+
+    expected = data.copy()
+
+    to_write = np.ones(shape, dtype=data.dtype)
+    thread_write_fn(start, to_write, chunks, data.shape, fn, threads=1)
+    slicing = to_slice(start, shape)
+    expected[slicing] = to_write
+    assert np.allclose(expected, data)

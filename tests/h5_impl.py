@@ -7,8 +7,7 @@ import numpy as np
 
 from h5py_like import GroupBase, FileMixin, DatasetBase, AttributeManagerBase, Mode
 from h5py_like.base import H5ObjectLike
-from h5py_like.shape_utils import Indexer
-
+from h5py_like.shape_utils import Indexer, to_slice, thread_read_fn, thread_write_fn
 
 errno_re = re.compile(r"errno = (\d+),")
 
@@ -88,16 +87,46 @@ class Dataset(DatasetBase):
             self._impl.resize(size)
 
     def __getitem__(self, args) -> np.ndarray:
-        def fn(offset, shape):
-            slices = tuple(slice(o, o + s) for o, s in zip(offset, shape))
+        def inner_fn(offset, shape):
+            slices = to_slice(offset, shape)
             return self._impl[slices]
+
+        if self.threads:
+
+            def fn(offset, shape):
+                return thread_read_fn(
+                    offset,
+                    shape,
+                    self.chunks or self.shape,
+                    self.shape,
+                    inner_fn,
+                    self.threads,
+                )
+
+        else:
+            fn = inner_fn
 
         return self._getitem(args, fn, self._astype)
 
     def __setitem__(self, args, val):
-        def fn(offset, array):
-            slices = tuple(slice(o, o + s) for o, s in zip(offset, array.shape))
+        def inner_fn(offset, array):
+            slices = to_slice(offset, array.shape)
             self._impl[slices] = array
+
+        if self.threads:
+
+            def fn(offset, array):
+                return thread_write_fn(
+                    offset,
+                    array,
+                    self.chunks or self.shape,
+                    self.shape,
+                    inner_fn,
+                    self.threads,
+                )
+
+        else:
+            fn = inner_fn
 
         with process_oserror():
             return self._setitem(args, val, fn)

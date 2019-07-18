@@ -4,8 +4,12 @@ from abc import ABC, abstractmethod
 from multiprocessing.pool import ThreadPool
 from math import ceil
 from typing import Callable, Tuple, TypeVar, Union, NamedTuple, List, Iterator
+import logging
 
 import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_THREADS = 4
 
@@ -439,8 +443,9 @@ def thread_read_fn(
     :return:
     """
     source_coords_list = list(chunk_roi(start, shape, chunks, global_shape))
-
-    with ThreadPool(min(threads, len(source_coords_list))) as pool:
+    threads = min(threads, len(source_coords_list))
+    with ThreadPool(threads) as pool:
+        logger.debug("Started pool of %s threads for reading", threads)
         results = pool.starmap(
             read_fn, source_coords_list, chunksize=len(source_coords_list) // threads
         )
@@ -474,7 +479,9 @@ def thread_write_fn(
     """
     tgt_coords_list = list(chunk_roi(start, arr.shape, chunks, global_shape))
 
+    threads = min(threads, len(tgt_coords_list))
     with ThreadPool(min(threads, len(tgt_coords_list))) as pool:
+        logger.debug("Started pool of %s threads for writing", threads)
         pool.starmap(
             write_fn,
             (
