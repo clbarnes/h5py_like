@@ -9,9 +9,9 @@ from h5py_like.shape_utils import (
     Indexer,
     guess_chunks,
     CHUNK_MAX,
-    threaded_block_read,
     chunk_roi,
     thread_read_fn,
+    to_slice,
 )
 
 LEN = 10
@@ -130,6 +130,14 @@ def test_indexer_stride():
 
 
 @pytest.mark.parametrize(
+    ["start", "shape", "expected"],
+    [[(10, 10), (15, 15), (slice(10, 25), slice(10, 25))]],
+)
+def test_to_slice(start, shape, expected):
+    assert to_slice(start, shape) == expected
+
+
+@pytest.mark.parametrize(
     "shape",
     [
         (100,),
@@ -161,30 +169,6 @@ def test_guess_chunks(shape, typesize):
     assert all([0 < c <= max(s, 1) for c, s in zip(chunks, shape)])
     bytes_per_chunk = typesize * np.product(chunks)
     assert bytes_per_chunk < CHUNK_MAX
-
-
-@pytest.mark.parametrize(
-    "shape",
-    [
-        (10, 10, 10),
-        (20, 20, 20),
-        # (15, 15, 15),  # todo: handle ragged edges
-    ],
-    ids=lambda x: f"shape{x}",
-)
-@pytest.mark.parametrize("threads", [1, 4], ids=lambda x: f"threads{x}")
-def test_threaded_read(threads, shape):
-    random = np.random.RandomState(1991)
-    data = random.random_sample(shape)
-
-    chunks = (10, 10, 10)
-
-    def fn(block_idx):
-        slicing = tuple(slice(i * c, (i + 1) * c) for i, c in zip(block_idx, chunks))
-        return data[slicing]
-
-    out = threaded_block_read((0, 0, 0), data.shape, (1, 1, 1), chunks, fn, threads)
-    assert np.allclose(data, out)
 
 
 def idfn(val):
@@ -259,6 +243,6 @@ def test_thread_read_fn(start, shape):
         return data[slicing]
 
     out = thread_read_fn(start, shape, chunks, data.shape, fn, threads=1)
-    slicing = tuple(slice(sta, sto) for sta, sto in zip(start, np.array(start) + shape))
+    slicing = to_slice(start, shape)
     expected = data[slicing]
     assert np.allclose(expected, out)

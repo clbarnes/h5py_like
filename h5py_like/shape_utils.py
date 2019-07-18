@@ -409,14 +409,14 @@ def chunk_roi(
         global_block_start_coords = global_block_idx * chunks
         start_coords = global_block_start_coords + s_b_offset
 
-        stop_coords = tuple(
+        this_shape = tuple(
             min(gbsc + lbo, gs) - sc
             for gbsc, lbo, gs, sc in zip(
                 global_block_start_coords, l_b_offset, global_shape, start_coords
             )
         )
 
-        yield tuple(start_coords), stop_coords
+        yield tuple(start_coords), this_shape
 
 
 def thread_read_fn(
@@ -478,87 +478,8 @@ def thread_write_fn(
         pool.starmap(
             write_fn,
             (
-                [st, arr[to_slice(st, sh)]]
-                for st, sh in chunk_roi(start, arr.shape, chunks, global_shape)
+                [st, arr[to_slice(np.array(st) - start, sh)]]
+                for st, sh in tgt_coords_list
             ),
             chunksize=len(tgt_coords_list) // threads,
         )
-
-
-def threaded_block_read(
-    start: Tuple[int, ...],
-    shape: Tuple[int, ...],
-    stride: Tuple[int, ...],
-    chunks: Tuple[int, ...],
-    read_fn: Callable[[Tuple[int, ...]], np.ndarray],
-    threads=DEFAULT_THREADS,
-) -> np.ndarray:
-    """
-    For a blocked dataset with block-aligned extends, read complete blocks using python
-    threads and then stitch and stride it in numpy.
-
-    :param start: offset from 0 corner
-    :param shape: unstrided shape of block to be read
-    :param stride: strides
-    :param chunks: block shape inside the dataset
-    :param read_fn: function which takes a block index as a tuple of ints and returns a
-        numpy array
-    :param threads: number of threads to use
-    :return: numpy array
-    """
-    start = np.asarray(start, dtype=int)
-    shape = np.asarray(shape, dtype=int)
-    chunks = np.asarray(chunks, dtype=int)
-
-    end = start + shape
-
-    start_block_idx, start_internal_offset = divmod(start, chunks)
-
-    # todo: handle ragged edges
-    stop_block_idx_guess, stop_internal_offset_guess = divmod(end, chunks)
-
-    stop_block_idx = []
-    stop_internal_offset = []
-    for stop_block_idx_d, stop_internal_offset_d, c in zip(
-        stop_block_idx_guess, stop_internal_offset_guess, chunks
-    ):
-        if stop_internal_offset_d:
-            stop_block_idx_d += 1
-            stop_internal_offset_d -= c
-        else:
-            stop_internal_offset_d = None
-
-        stop_block_idx.append(stop_block_idx_d)
-        stop_internal_offset.append(stop_internal_offset_d)
-
-    stop_block_idx = np.asarray(stop_block_idx, dtype=int)
-
-    block_blocks_shape: np.ndarray = stop_block_idx - start_block_idx
-
-    idx_iter1, idx_iter2 = itertools.tee(
-        itertools.product(*(range(i) for i in block_blocks_shape))
-    )
-    blocks = np.empty(shape=block_blocks_shape, dtype=object)
-
-    n_blocks = blocks.size
-    threads = min(threads, n_blocks)
-
-    # probably faster than threadpoolexecutor
-    with ThreadPool(threads) as pool:
-        for block_idx, block in zip(
-            idx_iter1,
-            pool.imap(
-                read_fn,
-                (start_block_idx + idx for idx in idx_iter2),
-                chunksize=n_blocks // threads,
-            ),
-        ):
-            blocks[block_idx] = block
-
-    big_arr = np.block(blocks.tolist())
-    return big_arr[
-        tuple(
-            slice(*sss)
-            for sss in zip(start_internal_offset, stop_internal_offset, stride)
-        )
-    ]
