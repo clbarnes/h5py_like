@@ -96,8 +96,11 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         Raises TypeError if an incompatible object already exists, or if the
         shape or dtype don't match according to the above rules.
         """
+        shape = tuple(shape)
+        dtype = np.dtype(dtype)
+
         if name not in self:
-            return self.create_dataset(name, *(shape, dtype), **kwds)
+            return self.create_dataset(name, shape, dtype, **kwds)
 
         dset = self[name]
         if not isinstance(dset, DatasetBase):
