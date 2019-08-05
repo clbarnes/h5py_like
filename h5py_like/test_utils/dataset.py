@@ -93,6 +93,13 @@ class DatasetTestBase(LoggedClassMixin, ABC):
             ds[:], np.array([[5, 6, 3], [7, 8, 3], [1, 2, 3]], dtype=data.dtype)
         )
 
+    def test_asarray(self, file_):
+        ds = self.dataset(file_)
+        arr = np.asarray(ds)
+        assert arr.shape == ds.shape
+        assert arr.dtype == ds.dtype
+        assert np.allclose(arr, ds[:])
+
 
 chunked = deepcopy(ds_kwargs)
 chunked["chunks"] = (5, 5, 5)
