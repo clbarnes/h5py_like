@@ -301,6 +301,11 @@ class IndexableArrayLike(ABC):
 
         return write_fn(start, item_arr)
 
+    def __array__(self, dtype=None):
+        if dtype is not None and dtype == self.dtype:
+            dtype = None
+        return np.asarray(self[:], dtype)
+
 
 CHUNK_BASE = 256 * 1024  # Multiplier by which chunks are adjusted
 CHUNK_MIN = 128 * 1024  # Soft lower limit (128k)
