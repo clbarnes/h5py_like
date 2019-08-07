@@ -72,7 +72,7 @@ class ModeTestBase(LoggedClassMixin, ABC):
     def test_create_truncate(self):
         mode = Mode.CREATE_TRUNCATE
 
-        self.factory(mode)
+        self.factory(mode).close()
 
         self.ensure_exists("group")
 
