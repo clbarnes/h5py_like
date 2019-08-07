@@ -6,7 +6,7 @@ import numpy as np
 from typing import Tuple, Optional, Any, Union, Iterator
 
 from .shape_utils import IndexableArrayLike
-from .common import Mode, classname
+from .common import classname
 from h5py_like.base import H5ObjectLike, mutation
 
 
@@ -20,9 +20,9 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
     threads = None
     _is_file = False
 
-    def __init__(self, mode: Mode = Mode.default()):
+    def __init__(self, basename: str, parent: "GroupBase"):  # noqa
+        super().__init__(basename, parent)
         self._astype = None
-        super().__init__(mode)
 
     @contextmanager
     def astype(self, dtype):
@@ -210,7 +210,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         """
         arr = self[...]
         if dtype is not None:
-            arr = arr.astype(dtype)
+            arr = arr.astype(dtype, copy=False)
         return arr
 
     def __str__(self):
@@ -224,6 +224,6 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
             (
                 isinstance(other, type(self)),
                 self.name == other.name,
-                self.parent == other.parent,
+                self.file == other.file,
             )
         )

@@ -29,8 +29,9 @@ def mutation(fn):
 class H5ObjectLike(WriteModeMixin, ABC):
     _is_file = False
 
-    def __init__(self, mode: Mode = Mode.default()):
-        self._mode = Mode.from_str(mode)
+    def __init__(self, basename: str, parent: "GroupBase"):  # noqa
+        self.basename = basename
+        self.parent = parent
 
     @property
     @abstractmethod
@@ -38,9 +39,8 @@ class H5ObjectLike(WriteModeMixin, ABC):
         pass
 
     @property
-    @abstractmethod
     def name(self) -> str:
-        pass
+        return str(Name(self.parent.name) / self.basename)
 
     @property
     def file(self) -> "FileMixin":  # noqa
@@ -48,11 +48,6 @@ class H5ObjectLike(WriteModeMixin, ABC):
         for p in self._ancestors():
             pass
         return p
-
-    @property
-    @abstractmethod
-    def parent(self):
-        pass
 
     @property
     def mode(self):

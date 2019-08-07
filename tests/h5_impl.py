@@ -17,16 +17,20 @@ def process_oserror():
     try:
         yield
     except OSError as e:
+        msg = str(e)
         match = errno_re.search(str(e))
-        if not match:
+        if match:
+            raise OSError(int(match.groups()[0]), str(e))
+        elif "file exists" in msg:
+            raise FileExistsError(str(e))
+        else:
             raise
-        raise OSError(int(match.groups()[0]), str(e))
 
 
 class AttributeManager(AttributeManagerBase):
-    def __init__(self, parent, attrs: h5py.AttributeManager):
+    def __init__(self, container, attrs: h5py.AttributeManager):
         self._impl = attrs
-        super().__init__(parent.mode)
+        super().__init__(container.mode)
 
     def __setitem__(self, k, v) -> None:
         with process_oserror():
@@ -48,10 +52,10 @@ class AttributeManager(AttributeManagerBase):
 
 class Dataset(DatasetBase):
     def __init__(self, parent, ds: h5py.Dataset):
-        self._parent = parent
+        basename = ds.name.split("/")[-1]
+        super().__init__(basename, parent)
         self._impl = ds
         self._attrs = AttributeManager(self, self._impl.attrs)
-        super().__init__(parent.mode)
 
     @property
     def _indexer(self):
@@ -139,10 +143,6 @@ class Dataset(DatasetBase):
     def name(self) -> str:
         return self._impl.name
 
-    @property
-    def parent(self):
-        return self._parent
-
 
 class Group(GroupBase):
     def _create_child_group(self, name) -> GroupBase:
@@ -166,10 +166,10 @@ class Group(GroupBase):
         return cls(self, obj)
 
     def __init__(self, parent, group: h5py.Group):
-        self._parent = parent
+        basename = group.name.split("/")[-1]
+        super().__init__(basename, parent)
         self._impl = group
         self._attrs = AttributeManager(self, self._impl.attrs)
-        super().__init__(parent.mode)
 
     def __setitem__(self, name, obj):
         with process_oserror():
@@ -205,10 +205,6 @@ class Group(GroupBase):
     @property
     def name(self) -> str:
         return self._impl.name
-
-    @property
-    def parent(self):
-        return self._parent
 
     def __delitem__(self, v) -> None:
         with process_oserror():

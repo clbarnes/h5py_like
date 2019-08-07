@@ -313,7 +313,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
                     isinstance(other, GroupBase),
                     not other._is_file,
                     self.name == other.name,
-                    self.parent == other.parent,
+                    self.file == other.file,
                 )
             )
         except AttributeError:

@@ -8,13 +8,11 @@ class FileMixin(ABC):
     _is_file = True
 
     @abstractmethod
-    def __init__(self, name, mode=Mode.READ_WRITE_CREATE):
+    def __init__(self, name, mode=Mode.default()):
         self.filename: Path = Path(name).resolve()
+        self.basename = "/"
         self._mode: Mode = Mode.from_str(mode)
-
-    @property
-    def parent(self) -> "FileMixin":
-        return self
+        self.parent = self
 
     def __enter__(self):
         return self
@@ -35,7 +33,7 @@ class FileMixin(ABC):
 
     @property
     def name(self):
-        return "/"
+        return self.basename
 
     def __str__(self):
         return f"<{classname(self)}(filename='{self.filename}', mode='{self.mode}')>"
