@@ -64,7 +64,7 @@ class DatasetTestBase(LoggedClassMixin, ABC):
             np_e = e
 
         if np_e or impl_e:
-            assert isinstance(impl_e, type(np_e))
+            assert isinstance(impl_e, type(np_e)), f"{type(impl_e)} != {type(np_e)}"
         else:
             np.testing.assert_allclose(impl, numpy)
 
@@ -110,33 +110,42 @@ class ThreadedDatasetTestBase(DatasetTestBase):
 
     @pytest.mark.parametrize("threads", [1, 4], ids=lambda x: f"threads{x}")
     def test_threaded_read(self, file_, threads):
-        shape = (20, 20)
-        chunks = (10, 10)
+        shape = (4, 4)
+        chunks = (2, 2)
         data = np.arange(np.product(shape), dtype=int).reshape(shape)
         ds = self.dataset(file_, data, chunks=chunks)
         ds.threads = threads
 
-        read_start = (5, 5)
-        read_shape = (10, 10)
+        read_start = (1, 1)
+        read_shape = (2, 2)
 
         slicing = to_slice(read_start, read_shape)
-        assert np.array_equal(ds[slicing], data[slicing])
+
+        ds_sliced = ds[slicing]
+        data_sliced = data[slicing]
+        assert np.array_equal(
+            ds_sliced, data_sliced
+        ), f"Dataset slice\n{ds_sliced}\ndoes not equal array slice\n{data_sliced}"
 
     @pytest.mark.parametrize("threads", [1, 4], ids=lambda x: f"threads{x}")
     def test_threaded_write(self, file_, threads):
-        shape = (20, 20)
-        chunks = (10, 10)
+        shape = (4, 4)
+        chunks = (2, 2)
 
         data = np.ones(shape, dtype=int)
 
         ds = self.dataset(file_, data, chunks=chunks)
         ds.threads = threads
 
-        write_start = (5, 5)
-        write_shape = (10, 10)
+        write_start = (1, 1)
+        write_shape = (2, 2)
         write_slice = to_slice(write_start, write_shape)
 
         data[write_slice] = 9
         ds[write_slice] = 9
 
-        assert np.array_equal(data, ds[:])
+        ds_sliced = ds[:]
+
+        assert np.array_equal(
+            ds_sliced, data
+        ), f"Dataset slice\n{ds_sliced}\ndoes not equal array\n{data}"

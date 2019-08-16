@@ -9,3 +9,4 @@ flake8==3.7.8
 bump2version==0.5.10
 black==19.3b0
 tox==3.13.2
+dask[array]==2.2.0

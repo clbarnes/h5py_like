@@ -1,13 +1,15 @@
 import itertools
 import numbers
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from multiprocessing.pool import ThreadPool
 from math import ceil
 from typing import Callable, Tuple, TypeVar, Union, NamedTuple, List, Iterator
 import logging
 
+import dask.array
 import numpy as np
-
+from dask.array.slicing import normalize_index
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,15 @@ class StartLenStride(NamedTuple):
     start: int
     len: int
     stride: int
+
+    def to_slice(self):
+        return slice(self.start, self.start + self.len, self.stride)
+
+    def indices(self):
+        return list(range(self.start, self.start + self.len, self.stride))
+
+    def numel(self):
+        return len(self.indices())
 
 
 def slice_to_start_len_stride(slice_: slice, max_len: int) -> StartLenStride:
@@ -305,6 +316,198 @@ class IndexableArrayLike(ABC):
         if dtype is not None and dtype == self.dtype:
             dtype = None
         return np.asarray(self[:], dtype)
+
+
+def simple_to_start_shape_out(slice_arg):
+    # shape of the slicing args passed in
+    arg_shape = []
+
+    # start and shape of the data to be read/written
+    ds_start = []
+    ds_shape = []
+
+    for sl in slice_arg:
+        if isinstance(sl, int):
+            ds_start.append(sl)
+            ds_shape.append(1)
+        else:
+            ds_start.append(sl.start)
+            ds_shape.append(sl.stop - sl.start)
+            arg_shape.append(sl.stop - sl.start)
+    return ds_start, ds_shape, arg_shape
+
+
+def start_shape_out(slice_arg, max_shape):
+    """
+    Return the minimum point in the target array,
+    and the shape of the slicing in the target array (including strided-over),
+    the shape of the array the slice arg is describing.
+
+    :param slice_arg:
+    :param max_shape:
+    :return:
+    """
+    described_shape = []
+    tgt_offset = []
+    tgt_shape = []
+    tgt_strides = []
+
+    idx = 0
+
+    for sl in normalize_index(slice_arg, max_shape):
+        sh = max_shape[idx]
+        if isinstance(sl, int):
+            tgt_offset.append(sl)
+            tgt_shape.append(1)
+        elif isinstance(sl, slice):
+            indices = sl.indices(sh)
+            described_shape.append(len(range(*indices)))
+            start, stop = indices[:2]
+            step = indices[2]
+            tgt_strides.append(step)
+            if step < 0:
+                start, stop = stop + 1, start + 1
+            tgt_offset.append(start)
+            tgt_shape.append(stop - start)
+
+    return tgt_offset, tgt_shape, tgt_strides, described_shape
+
+
+def chunk_into(write_start, write_shape, tgt_chunks, write_stride=None):
+    """
+    You have an array of shape ``write_shape`` which you want to write into a dataset
+    with chunk scheme ``tgt_chunks``, starting at index ``write_start``.
+
+    This will tell you how to chunk your array so that its chunks line up with the
+    dataset chunks.
+
+    Returns a tuple whose items correspond to dimensions;
+    for each dimension, there is a tuple whose items are the lengths of each chunk
+    in that dimension.
+
+    :param write_start:
+    :param write_shape:
+    :param tgt_chunks:
+    :return:
+    """
+    out = list()
+    if write_stride is None:
+        write_stride = [1] * len(write_start)
+
+    for start_d, shape_d, stride_d, chunk_d in zip(
+        write_start, write_shape, write_stride, tgt_chunks
+    ):
+        chunks_d = []
+        remainder = start_d % chunk_d
+        done = chunk_d - remainder
+        if done:
+            chunks_d.append(done)
+        while done + chunk_d < shape_d:
+            chunks_d.append(chunk_d)
+            done += chunk_d
+        if done != shape_d:
+            chunks_d.append(shape_d - done)
+        out.append(tuple(chunks_d))
+
+    return tuple(out)
+
+
+class DaskWrapper:
+    """Wrapper class implementing simple numpy-like slice reads and writes.
+
+    Dask implements a lot of numpy-like slicing for us when reading,
+    when we use dask.array.from_array(arr, fancy=False), and handles concurrency nicely.
+    This class wraps a function which takes an offset and shape,
+    allowing it to take the getitem arguments supplied by dask's index normaliser.
+
+    Thus, we get fancy indexing and concurrency for free.
+
+    The same is almost true for writes - dask can store chunked arrays concurrently.
+
+    >>> darr = DaskWrapper(my_simple_dataset, my_read_fn).as_dask()
+    >>> darr[..., 1:-85].compute()
+
+    Do not use ``__getitem__`` and ``__setitem__`` directly.
+    Instead, use the ``read`` and ``write`` methods,
+    which arrange for the direct methods to be used by dask.
+    For reading, use the ``as_dask`` method to work with the wrapper as a dask array
+    directly.
+    """
+
+    def __init__(
+        self,
+        dataset,
+        read_fn: Callable[[Tuple[int, ...], Tuple[int, ...]], np.ndarray],
+        write_fn: Callable[[Tuple[int, ...], np.ndarray], None],
+    ):
+        self.read_fn = read_fn
+        self.write_fn = write_fn
+
+        self.shape = dataset.shape
+        self.ndim = dataset.ndim
+        self.dtype = dataset.dtype
+        self.chunks = getattr(dataset, "chunks", dataset.shape)
+
+    def __getitem__(self, slice_arg):
+        start, shape, out_shape = simple_to_start_shape_out(slice_arg)
+
+        if 0 in out_shape:
+            return np.empty(shape=out_shape, dtype=self.dtype)
+
+        out = self.read_fn(tuple(start), tuple(shape))
+        return out.reshape(out_shape)
+
+    def __setitem__(self, slice_arg, value):
+        start, shape, _ = simple_to_start_shape_out(slice_arg)
+        reshaped = value.reshape(shape)
+        self.write_fn(tuple(start), reshaped)
+
+    def as_dask(self, **kwargs):
+        dkwargs = {"fancy": False, "name": False}
+        # todo: explicitly set chunks to use underlying dataset's?
+        dkwargs.update(kwargs)
+        return dask.array.from_array(self, **dkwargs)
+
+    def read(self, slice_arg, **dask_kwargs):
+        return self.as_dask(**dask_kwargs)[slice_arg].compute()
+
+    def write(self, slice_arg, value):
+        # normed = normalize_index(slice_arg, self.shape)
+        # start, tgt_shape, arg_shape = simple_to_start_shape_out(normed)
+
+        tgt_offset, tgt_shape, tgt_stride, slice_shape = start_shape_out(
+            slice_arg, self.shape
+        )
+
+        if not isinstance(value, (np.ndarray, dask.array.Array)):
+            value = np.asarray(value)
+
+        if value.shape != tgt_shape:
+            if value.size == np.product(tgt_shape):
+                value = value.reshape(tgt_shape)
+            else:
+                value = dask.array.broadcast_to(value, tuple(slice_shape))
+
+        tgt_chunks = chunk_into(tgt_offset, tgt_shape, self.chunks)
+
+        if not isinstance(value, dask.array.Array):
+            value = dask.array.from_array(value, chunks=tgt_chunks, name=False)
+
+        if getattr(value, "chunks", tgt_chunks) != tgt_chunks:
+            value = dask.array.rechunk(value, tgt_chunks)
+
+        # value.store(self, regions=normed)
+
+
+@contextmanager
+def dask_context(n_threads, **kwargs):
+    if n_threads:
+        with ThreadPool(n_threads) as pool:
+            with dask.config.set(pool=pool, **kwargs):
+                yield
+    else:
+        with dask.config.set(scheduler="single-threaded", **kwargs):
+            yield
 
 
 CHUNK_BASE = 256 * 1024  # Multiplier by which chunks are adjusted

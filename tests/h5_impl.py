@@ -1,13 +1,12 @@
 import re
 from contextlib import contextmanager
 from typing import Iterator, Union, Tuple, Optional, Any
-
 import h5py
 import numpy as np
 
 from h5py_like import GroupBase, FileMixin, DatasetBase, AttributeManagerBase, Mode
 from h5py_like.base import H5ObjectLike
-from h5py_like.shape_utils import Indexer, to_slice, thread_read_fn, thread_write_fn
+from h5py_like.shape_utils import Indexer, to_slice, DaskWrapper, dask_context
 
 errno_re = re.compile(r"errno = (\d+),")
 
@@ -55,7 +54,20 @@ class Dataset(DatasetBase):
         basename = ds.name.split("/")[-1]
         super().__init__(basename, parent)
         self._impl = ds
+
+        def read_fn(offset, shape):
+            slices = to_slice(offset, shape)
+            return self._impl[slices]
+
+        def write_fn(offset, array):
+            slices = to_slice(offset, array.shape)
+            self._impl[slices] = array
+
+        self._dask = DaskWrapper(ds, read_fn, write_fn)
         self._attrs = AttributeManager(self, self._impl.attrs)
+
+    def as_dask(self, **kwargs):
+        return self._dask.as_dask(**kwargs)
 
     @property
     def _indexer(self):
@@ -91,49 +103,13 @@ class Dataset(DatasetBase):
             self._impl.resize(size)
 
     def __getitem__(self, args) -> np.ndarray:
-        def inner_fn(offset, shape):
-            slices = to_slice(offset, shape)
-            return self._impl[slices]
-
-        if self.threads:
-
-            def fn(offset, shape):
-                return thread_read_fn(
-                    offset,
-                    shape,
-                    self.chunks or self.shape,
-                    self.shape,
-                    inner_fn,
-                    self.threads,
-                )
-
-        else:
-            fn = inner_fn
-
-        return self._getitem(args, fn, self._astype)
+        with dask_context(self.threads):
+            return self._dask.read(args)
 
     def __setitem__(self, args, val):
-        def inner_fn(offset, array):
-            slices = to_slice(offset, array.shape)
-            self._impl[slices] = array
-
-        if self.threads:
-
-            def fn(offset, array):
-                return thread_write_fn(
-                    offset,
-                    array,
-                    self.chunks or self.shape,
-                    self.shape,
-                    inner_fn,
-                    self.threads,
-                )
-
-        else:
-            fn = inner_fn
-
-        with process_oserror():
-            return self._setitem(args, val, fn)
+        with dask_context(self.threads):
+            with process_oserror():
+                self._dask.write(args, val)
 
     @property
     def attrs(self) -> "AttributeManagerBase":
