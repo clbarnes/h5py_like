@@ -1,3 +1,4 @@
+import itertools
 from setuptools import find_packages, setup
 
 
@@ -5,8 +6,7 @@ with open("README.md") as f:
     readme = f.read()
 
 extras = {"test": ["pytest>=4.6.3"], "dask": ["dask"]}
-extras["all"] = sum(extras.values())
-
+extras["all"] = list(itertools.chain.from_iterable(extras.values()))
 
 setup(
     author="Chris Lloyd Barnes",
@@ -28,7 +28,7 @@ setup(
     keywords="h5py",
     name="h5py_like",
     packages=find_packages(exclude=["tests"]),
-    url="https://github.com/barnesc/h5py_like",
+    url="https://github.com/clbarnes/h5py_like",
     version="0.6.0",
     zip_safe=False,
 )
