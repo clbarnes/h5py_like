@@ -6,6 +6,6 @@ wheel==0.33.6
 twine==1.13.0
 pre-commit==1.18.2
 flake8==3.7.8
-bump2version==0.5.10
+bump2version==0.5.11
 black==19.3b0
 tox==3.13.2
