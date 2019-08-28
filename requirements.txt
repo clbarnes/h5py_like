@@ -4,7 +4,7 @@ h5py==2.9.0
 setuptools==41.1.0
 wheel==0.33.6
 twine==1.13.0
-pre-commit==1.18.2
+pre-commit==1.18.3
 flake8==3.7.8
 bump2version==0.5.11
 black==19.3b0
