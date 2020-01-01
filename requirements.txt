@@ -1,7 +1,7 @@
 numpy==1.18.0
 pytest==5.3.2
 h5py==2.10.0
-setuptools==42.0.2
+setuptools==43.0.0
 wheel==0.33.6
 twine==3.1.1
 pre-commit==1.20.0
