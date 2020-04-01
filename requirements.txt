@@ -1,5 +1,5 @@
 numpy==1.18.1
-pytest==5.3.5
+pytest==5.4.1
 h5py==2.10.0
 setuptools==45.2.0
 wheel==0.34.2
