@@ -39,6 +39,13 @@ class Mode(StrEnum):
     def writable(self):
         return self != type(self).READ_ONLY
 
+    def simple(self):
+        cls = type(self)
+        if self == cls.READ_ONLY:
+            return cls.READ_ONLY
+        else:
+            return cls.READ_WRITE
+
     @classmethod
     def from_str(cls, s):
         if s == "w-":
