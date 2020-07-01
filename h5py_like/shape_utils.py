@@ -396,11 +396,11 @@ def chunk_roi(
     shape_arr = np.asarray(shape, dtype=int)
     stop = start_arr + shape_arr
 
-    start_block_idx, start_block_offset = divmod(start_arr, chunks)
+    start_block_idx, start_block_offset = divmod(start_arr, chunks_arr)
 
-    last_block_idx, last_block_offset = divmod(stop, chunks)
+    last_block_idx, last_block_offset = divmod(stop, chunks_arr)
     last_block_idx[last_block_offset == 0] -= 1
-    last_block_offset[last_block_offset == 0] = chunks[last_block_offset == 0]
+    last_block_offset[last_block_offset == 0] = chunks_arr[last_block_offset == 0]
 
     internal_block_idxs = last_block_idx - start_block_idx
 
@@ -417,7 +417,7 @@ def chunk_roi(
             global_block_idx == last_block_idx
         ]
 
-        global_block_start_coords = global_block_idx * chunks
+        global_block_start_coords = global_block_idx * chunks_arr
         start_coords = global_block_start_coords + s_b_offset
 
         this_shape = tuple(
