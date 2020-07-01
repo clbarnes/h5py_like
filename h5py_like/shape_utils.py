@@ -69,7 +69,7 @@ def int_to_start_len_stride(i: int, max_len: int) -> StartLenStride:
         begin = i + max_len
     elif i >= max_len or i < -max_len:
         raise IndexError(
-            "index {} is out of bounds for axis with size".format(i, max_len)
+            "index {} is out of bounds for axis with size {}".format(i, max_len)
         )
     else:
         begin = i
@@ -118,8 +118,8 @@ class Indexer:
          and list of indices at which to insert newaxes (must be in inserted in order)
         """
         concrete_indices = sum(idx not in self.non_indexes for idx in index_tup)
-        index_lst = []
-        newaxis_at = []
+        index_lst: List[ConcreteSliceLike] = []
+        newaxis_at: List[int] = []
         has_ellipsis = False
         int_count = 0
         for item in index_tup:
@@ -180,7 +180,9 @@ class Indexer:
 
         out_shape = tuple(out_shape)
         if 0 in out_shape:
-            raise NullSlicingException("Slicing has a 0-length dimension", out_shape)
+            raise NullSlicingException(
+                "Slicing has a 0-length dimension", tuple(out_shape)
+            )
 
         start, read_shape, stride = zip(*start_readshape_stride)
         return Roi(start, read_shape, stride, out_shape)
@@ -388,13 +390,13 @@ def chunk_roi(
     :param global_shape: shape of the array which will be indexed into
     :return: start, shape pairs for each subregion
     """
-    chunks = np.asarray(chunks, dtype=int)
+    chunks_arr = np.asarray(chunks, dtype=int)
 
-    start = np.asarray(start, dtype=int)
-    shape = np.asarray(shape, dtype=int)
-    stop = start + shape
+    start_arr = np.asarray(start, dtype=int)
+    shape_arr = np.asarray(shape, dtype=int)
+    stop = start_arr + shape_arr
 
-    start_block_idx, start_block_offset = divmod(start, chunks)
+    start_block_idx, start_block_offset = divmod(start_arr, chunks)
 
     last_block_idx, last_block_offset = divmod(stop, chunks)
     last_block_idx[last_block_offset == 0] -= 1
@@ -409,7 +411,7 @@ def chunk_roi(
         global_block_idx = start_block_idx + internal_block_idx
 
         s_b_offset = start_block_offset * (internal_block_idx == 0)
-        l_b_offset = chunks.copy()
+        l_b_offset = chunks_arr.copy()
 
         l_b_offset[global_block_idx == last_block_idx] = last_block_offset[
             global_block_idx == last_block_idx
