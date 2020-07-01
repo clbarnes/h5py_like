@@ -6,10 +6,10 @@ Some base classes and helper functions for an approximately h5py-like API in pyt
 
 You have a library which reads/writes contiguous regions of chunked numeric arrays,
  and want to make it behave somewhat like h5py.
- 
+
 e.g.
-[zarr](https://github.com/zarr-developers/zarr), 
-[z5](https://github.com/constantinpape/z5), 
+[zarr](https://github.com/zarr-developers/zarr),
+[z5](https://github.com/constantinpape/z5),
 [xarray](http://xarray.pydata.org/en/stable/),
 [pyn5](https://github.com/pattonw/rust-pyn5)
 
@@ -24,12 +24,15 @@ e.g.
 
 - Access modes are converted to enums, although they are largely compatible with the `str` forms
   - `"x"` is preferred over `"w-"` for exclusive creation
+- As of h5py v2.0, `File.mode` always returns one of `"r"` (read-only) and `"r+"` (read/write); h5py-like uses whatever the file was opened with.
+  - The `Mode.simple()` method simplifies the mode down to one of those options
+- The default open mode (`Mode.default()`) is read-only, as it will be from h5py v3.0
 
 ## Usage
 
 See the trivial HDF5 implementation in [the tests package](./tests/h5_impl.py).
 
-Create your own `Dataset`, `Group`, `File`, and `AttributeManager` classes, 
+Create your own `Dataset`, `Group`, `File`, and `AttributeManager` classes,
 implementing their abstract methods.
 Because `File`s should subclass your `Group`, the base class here is a mixin.
 It should come before the `Group` in the MRO.
@@ -45,11 +48,11 @@ class MyDataset(DatasetBase):
     @mutation
     def __setitem__(self, idx, val):
         ...
-    
+
 class MyGroup(GroupBase):
     # ... implement abstract methods
     pass
-    
+
 class MyFile(FileMixin, MyGroup):
     # ... implement abstract methods
     pass
@@ -90,13 +93,13 @@ from h5py_like.test_utils import FileTestBase, GroupTestBase, DatasetTestBase, M
 
 class TestFile(FileTestBase):
     pass
-    
+
 class TestGroup(GroupTestBase):
     pass
 
 class TestDataset(DatasetTestBase):
     pass
-    
+
 class TestMode(ModeTestBase):
     def factory(self, mode):
         # Instantiate your File object in the given mode in a way which is repeatable within a method.
@@ -117,4 +120,4 @@ The `DatasetTestBase` provides `dataset_` `name`, `shape`, and `dtype`, and a `s
 ## Notes
 
 If you only want to implement part of the h5py-like API, just `raise NotImplementedError()`.
-Then your classes are being explicit about what they do and don't support. 
+Then your classes are being explicit about what they do and don't support.
