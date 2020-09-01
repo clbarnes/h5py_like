@@ -2,7 +2,7 @@ numpy==1.19.1
 pytest==5.4.3
 h5py==2.10.0
 setuptools==49.2.0
-wheel==0.34.2
+wheel==0.35.1
 twine==3.2.0
 pre-commit==2.6.0
 flake8==3.8.3
