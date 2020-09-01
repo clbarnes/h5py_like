@@ -26,7 +26,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
 
     @contextmanager
     def astype(self, dtype):
-        """ Get a context manager allowing you to perform reads to a
+        """Get a context manager allowing you to perform reads to a
         different destination type, e.g.:
         >>> with dataset.astype('f8'):
         ...     double_precision = dataset[0:100:2]
@@ -71,7 +71,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
     @abstractmethod
     def maxshape(self) -> Tuple[int, ...]:
         """Shape up to which this dataset can be resized.  Axes with value
-        None have no resize limit. """
+        None have no resize limit."""
         raise NotImplementedError()
 
     @property
@@ -106,7 +106,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
 
     @abstractmethod
     def resize(self, size: Union[int, Tuple[int, ...]], axis: Optional[int] = None):
-        """ Resize the dataset, or the specified axis.
+        """Resize the dataset, or the specified axis.
         The dataset must be stored in chunked format; it can be resized up to
         the "maximum shape" (keyword maxshape) specified at creation time.
         The rank of the dataset cannot be changed.
@@ -122,7 +122,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         raise NotImplementedError()
 
     def __len__(self) -> int:
-        """ The size of the first axis.  TypeError if scalar.
+        """The size of the first axis.  TypeError if scalar.
         Limited to 2**32 on 32-bit systems; Dataset.len() is preferred.
         """
         size = self.len()
@@ -133,7 +133,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         return size
 
     def len(self) -> int:
-        """ The size of the first axis.  TypeError if scalar.
+        """The size of the first axis.  TypeError if scalar.
         Use of this method is preferred to len(dset), as Python's built-in
         len() cannot handle values greater then 2**32 on 32-bit systems.
         """
@@ -143,7 +143,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
         return shape[0]
 
     def __iter__(self) -> Iterator[np.ndarray]:
-        """ Iterate over the first axis.  TypeError if scalar.
+        """Iterate over the first axis.  TypeError if scalar.
         BEWARE: Modifications to the yielded data are *NOT* written to file.
         """
         for i in range(self.len()):
@@ -165,13 +165,13 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
 
     @abstractmethod
     def __setitem__(self, args, val):
-        """ Write to the HDF5-like dataset from a Numpy array.
+        """Write to the HDF5-like dataset from a Numpy array.
 
         The _setitem method is a helper for this.
         """
 
     def read_direct(self, dest, source_sel=None, dest_sel=None):
-        """ Read data directly from the underlying array into an existing NumPy array.
+        """Read data directly from the underlying array into an existing NumPy array.
         The destination array must be C-contiguous and writable.
         Selections must be the output of numpy.s_[<args>].
 
@@ -188,7 +188,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
 
     @mutation
     def write_direct(self, source, source_sel=None, dest_sel=None):
-        """ Write data directly to HDF5 from a NumPy array.
+        """Write data directly to HDF5 from a NumPy array.
         The source array must be C-contiguous.  Selections must be
         the output of numpy.s_[<args>].
 
@@ -204,7 +204,7 @@ class DatasetBase(H5ObjectLike, IndexableArrayLike, ABC):
             self[dest_sel] = source[source_sel]
 
     def __array__(self, dtype=None):
-        """ Create a Numpy array containing the whole dataset.  DON'T THINK
+        """Create a Numpy array containing the whole dataset.  DON'T THINK
         THIS MEANS DATASETS ARE INTERCHANGEABLE WITH ARRAYS.  For one thing,
         you have to read the whole dataset every time this method is called.
         """

@@ -78,8 +78,7 @@ def int_to_start_len_stride(i: int, max_len: int) -> StartLenStride:
 
 
 class Roi(NamedTuple):
-    """ROI described by positive integers.
-    """
+    """ROI described by positive integers."""
 
     start: Tuple[int, ...]
     read_shape: Tuple[int, ...]

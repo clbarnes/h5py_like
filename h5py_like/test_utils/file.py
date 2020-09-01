@@ -28,8 +28,7 @@ class FileTestBase(GroupLikeTestsMixin, ABC):
 class ModeTestBase(LoggedClassMixin, ABC):
     @abstractmethod
     def factory(self, mode: Mode) -> FileMixin:
-        """Create a File at a location deterministic per test.
-        """
+        """Create a File at a location deterministic per test."""
         pass
 
     def ensure_exists(self, group=None):

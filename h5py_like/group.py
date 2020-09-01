@@ -10,8 +10,7 @@ from .common import classname
 
 
 class GroupBase(H5ObjectLike, MutableMapping, ABC):
-    """ Represents an HDF5-like group.
-    """
+    """Represents an HDF5-like group."""
 
     _is_file = False
 
@@ -37,7 +36,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
 
     @mutation
     def create_group(self, name) -> "GroupBase":
-        """ Create and return a new subgroup.
+        """Create and return a new subgroup.
         Name may be absolute or relative.  Fails if the target name already
         exists.
         """
@@ -60,7 +59,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
     def create_dataset(
         self, name, shape=None, dtype=None, data=None, **kwds
     ) -> DatasetBase:
-        """ Create a new HDF5-like dataset
+        """Create a new HDF5-like dataset
 
         name
             Name of the dataset (absolute or relative).
@@ -87,7 +86,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         return parent._create_child_dataset(name, shape, dtype, data, **kwds)
 
     def require_dataset(self, name, shape, dtype, exact=False, **kwds) -> DatasetBase:
-        """ Open a dataset, creating it if it doesn't exist.
+        """Open a dataset, creating it if it doesn't exist.
         If keyword "exact" is False (default), an existing dataset must have
         the same shape and a conversion-compatible dtype to be returned.  If
         True, the shape and dtype must match exactly.
@@ -128,7 +127,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         return dset
 
     def create_dataset_like(self, name, other, **kwupdate) -> DatasetBase:
-        """ Create a dataset similar to `other`.
+        """Create a dataset similar to `other`.
         name
             Name of the dataset (absolute or relative).  Provide None to make
             an anonymous dataset.
@@ -184,7 +183,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
 
     @abstractmethod
     def __setitem__(self, name, obj):
-        """ Add an object to the group.  The name must not already be in use.
+        """Add an object to the group.  The name must not already be in use.
         The action taken depends on the type of object assigned:
         Named HDF5 object (Dataset, Group, Datatype)
             A hard link is created at "name" which points to the
@@ -215,32 +214,32 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
         without_attrs=False,
     ):
         """Copy an object or group.
-        The source can be a path, Group, Dataset, or Datatype object.  The
-        destination can be either a path or a Group object.  The source and
-        destinations need not be in the same file.
-        If the source is a Group object, all objects contained in that group
-        will be copied recursively.
-        When the destination is a Group object, by default the target will
-        be created in that group with its current name (basename of obj.name).
-        You can override that by setting "name" to a string.
-        There are various options which all default to "False":
-         - shallow: copy only immediate members of a group.
-         - expand_soft: expand soft links into new objects.
-         - expand_external: expand external links into new objects.
-         - expand_refs: copy objects that are pointed to by references.
-         - without_attrs: copy object without copying attributes.
-       Example:
-        >>> f = File('myfile.hdf5')
-        >>> f.listnames()
-        ['MyGroup']
-        >>> f.copy('MyGroup', 'MyCopy')
-        >>> f.listnames()
-        ['MyGroup', 'MyCopy']
+         The source can be a path, Group, Dataset, or Datatype object.  The
+         destination can be either a path or a Group object.  The source and
+         destinations need not be in the same file.
+         If the source is a Group object, all objects contained in that group
+         will be copied recursively.
+         When the destination is a Group object, by default the target will
+         be created in that group with its current name (basename of obj.name).
+         You can override that by setting "name" to a string.
+         There are various options which all default to "False":
+          - shallow: copy only immediate members of a group.
+          - expand_soft: expand soft links into new objects.
+          - expand_external: expand external links into new objects.
+          - expand_refs: copy objects that are pointed to by references.
+          - without_attrs: copy object without copying attributes.
+        Example:
+         >>> f = File('myfile.hdf5')
+         >>> f.listnames()
+         ['MyGroup']
+         >>> f.copy('MyGroup', 'MyCopy')
+         >>> f.listnames()
+         ['MyGroup', 'MyCopy']
         """
 
     @mutation
     def move(self, source, dest):
-        """ Move a link to a new location in the file.
+        """Move a link to a new location in the file.
         If "source" is a hard link, this effectively renames the object.  If
         "source" is a soft or external link, the link itself is moved, with its
         value unmodified.
@@ -258,7 +257,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
                 pass
 
     def visit(self, func: Callable[[str], Optional[Any]]) -> Optional[Any]:
-        """ Recursively visit all names in this group and subgroups (HDF5 1.8).
+        """Recursively visit all names in this group and subgroups (HDF5 1.8).
         You supply a callable (function, method or callable object); it
         will be called exactly once for each link in this group and every
         group below it. Your callable must conform to the signature:
@@ -280,7 +279,7 @@ class GroupBase(H5ObjectLike, MutableMapping, ABC):
     def visititems(
         self, func: Callable[[str, H5ObjectLike], Optional[Any]]
     ) -> Optional[Any]:
-        """ Recursively visit names and objects in this group (HDF5 1.8).
+        """Recursively visit names and objects in this group (HDF5 1.8).
         You supply a callable (function, method or callable object); it
         will be called exactly once for each link in this group and every
         group below it. Your callable must conform to the signature:

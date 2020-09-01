@@ -28,7 +28,7 @@ class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
 
     @mutation
     def create(self, name, data, shape=None, dtype=None):
-        """ Set a new attribute, overwriting any existing attribute.
+        """Set a new attribute, overwriting any existing attribute.
         The type and shape of the attribute are determined from the data.  To
         use a specific (numpy) type or shape, or to preserve the type of an attribute,
         use the methods create() and modify().
@@ -47,7 +47,7 @@ class AttributeManagerBase(MutableMapping, WriteModeMixin, ABC):
 
     @mutation
     def modify(self, name, value):
-        """ Change the value of an attribute while preserving its (numpy) type.
+        """Change the value of an attribute while preserving its (numpy) type.
         Differs from __setitem__ in that if the attribute already exists, its
         type is preserved.  This can be very useful for interacting with
         externally generated files.
