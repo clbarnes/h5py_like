@@ -8,10 +8,11 @@ You have a library which reads/writes contiguous regions of chunked numeric arra
  and want to make it behave somewhat like h5py.
 
 e.g.
-[zarr](https://github.com/zarr-developers/zarr),
-[z5](https://github.com/constantinpape/z5),
+[zarr](https://github.com/zarr-developers/zarr-python),
+[z5](https://github.com/constantinpape/z5) (motivated `h5py_like`),
 [xarray](http://xarray.pydata.org/en/stable/),
-[pyn5](https://github.com/pattonw/rust-pyn5)
+[pyn5](https://github.com/pattonw/rust-pyn5) (uses `h5py_like`),
+[exdir](https://github.com/CINPLA/exdir/)
 
 ## Not supported
 
