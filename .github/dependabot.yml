@@ -1,0 +1,21 @@
+version: 2
+updates:
+- package-ecosystem: pip
+  directory: "/"
+  schedule:
+    interval: monthly
+    time: "10:00"
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: numpy
+    versions:
+    - 1.20.1
+  - dependency-name: tox
+    versions:
+    - 3.22.0
+  - dependency-name: pre-commit
+    versions:
+    - 2.10.1
+  - dependency-name: setuptools
+    versions:
+    - 54.0.0
